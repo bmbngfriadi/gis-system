@@ -1,14 +1,12 @@
 <?php
-// MENCEGAH PHP ERROR MERUSAK FORMAT JSON DI HOSTING
 error_reporting(0);
 ini_set('display_errors', 0);
-ini_set('memory_limit', '256M'); // Menaikkan limit memori untuk Export Data
+ini_set('memory_limit', '256M');
 
 session_start();
 require 'db.php'; 
 require 'helper.php';
 
-// PAKSA FORMAT UTF-8 AGAR JSON TIDAK GAGAL SAAT MEMBACA KARAKTER ANEH DARI EXCEL
 if($conn) { $conn->set_charset("utf8mb4"); }
 
 header("X-Frame-Options: DENY");
@@ -18,7 +16,6 @@ header('Content-Type: application/json; charset=utf-8');
 date_default_timezone_set('Asia/Jakarta'); 
 $conn->query("SET time_zone = '+07:00'");
 
-// SECURITY CHECK LENGKAP
 if(!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true) {
     echo json_encode(['success' => false, 'message' => 'Sesi habis. Silakan login ulang.', 'code' => 401]);
     exit;
@@ -29,19 +26,20 @@ $serverRole = $_SESSION['user_data']['role'] ?? '';
 $serverDept = $_SESSION['user_data']['department'] ?? '';
 $serverName = $_SESSION['user_data']['fullname'] ?? '';
 
-// Auto-migration
+// Auto-migration Kolom
 try {
     $conn->query("ALTER TABLE gis_requests ADD COLUMN issue_photo VARCHAR(255) NULL AFTER app_wh");
     $conn->query("ALTER TABLE gis_requests ADD COLUMN receive_photo VARCHAR(255) NULL AFTER issue_photo");
     $conn->query("ALTER TABLE gis_requests ADD COLUMN received_by VARCHAR(100) NULL AFTER receive_photo");
     $conn->query("ALTER TABLE gis_requests ADD COLUMN receive_time DATETIME NULL AFTER received_by");
+    // TAMBAHAN KOLOM UNTUK FOTO GR
+    $conn->query("ALTER TABLE gis_receives ADD COLUMN gr_photo VARCHAR(255) NULL AFTER remarks");
 } catch (Exception $e) {}
 
 $input = json_decode(file_get_contents('php://input'), true);
 $action = $input['action'] ?? '';
 $now = date('Y-m-d H:i:s');
 
-// Helper Permissions
 function checkAccessSession($perm) {
     global $serverRole, $serverDept;
     if($serverRole === 'Administrator') return true;
@@ -52,7 +50,6 @@ function checkAccessSession($perm) {
     return in_array($perm, $rights);
 }
 
-// Custom Safe JSON Sender
 function safeSendJson($data) {
     echo json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE);
     exit;
@@ -79,12 +76,11 @@ function buildItemListText($conn, $itemsArray) {
         $uom = $it['uom'] ?? '';
         $stkQ = $conn->query("SELECT stock FROM gis_inventory WHERE item_code='$code'")->fetch_assoc();
         $currentStock = $stkQ ? $stkQ['stock'] : 0;
-        $text .= "▪️ $code - $name\n   Diminta/Diambil: $qty $uom | Sisa Stok: $currentStock $uom\n";
+        $text .= "▪️ $code - $name\n   Jml: $qty $uom | Sisa Stok: $currentStock $uom\n";
     }
     return $text;
 }
 
-// --- 1. INVENTORY MANAGEMENT ---
 if($action == 'getInventory') {
     $res = $conn->query("SELECT * FROM gis_inventory ORDER BY item_name ASC");
     $data = [];
@@ -155,7 +151,6 @@ if($action == 'importItems') {
     }
 }
 
-// --- 2. GOOD RECEIVE (BARANG MASUK) ---
 if($action == 'getReceives') {
     $res = $conn->query("SELECT * FROM gis_receives ORDER BY created_at DESC LIMIT 100");
     $data = [];
@@ -176,10 +171,15 @@ if($action == 'submitGR') {
     $items = $input['items']; 
     $itemsJson = json_encode($items);
 
+    // PENGECEKAN FOTO GR
+    if(empty($input['photoBase64'])) safeSendJson(['success'=>false, 'message'=>'Bukti foto penerimaan (GR) wajib dilampirkan.']);
+    $photoUrl = uploadGisPhoto($input['photoBase64'], "GR_" . preg_replace('/[^a-zA-Z0-9]/', '', $grId));
+    if(!$photoUrl) safeSendJson(['success'=>false, 'message'=>'Gagal menyimpan foto GR.']);
+
     $conn->begin_transaction();
     try {
-        $sql = "INSERT INTO gis_receives (gr_id, username, fullname, remarks, items_json, created_at) 
-                VALUES ('$grId', '$serverUser', '$serverName', '$remarks', '$itemsJson', '$now')";
+        $sql = "INSERT INTO gis_receives (gr_id, username, fullname, remarks, gr_photo, items_json, created_at) 
+                VALUES ('$grId', '$serverUser', '$serverName', '$remarks', '$photoUrl', '$itemsJson', '$now')";
         $conn->query($sql);
 
         foreach($items as $it) {
@@ -202,7 +202,6 @@ if($action == 'submitGR') {
     }
 }
 
-// --- 3. GOOD ISSUE (REQUEST & HISTORY) ---
 if($action == 'getRequests') {
     $sql = "SELECT * FROM gis_requests WHERE 1=1";
     if(!in_array($serverRole, ['Administrator', 'Warehouse', 'PlantHead']) && !($serverRole === 'TeamLeader' && strtolower($serverDept) === 'warehouse')) {
@@ -318,6 +317,9 @@ if($action == 'cancelRequest') {
         $headPhones = getPhones($conn, ['SectionHead', 'TeamLeader'], $cekReq['department']);
         foreach($headPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Permintaan dibatalkan oleh pemohon. Abaikan pengajuan ini.");
 
+        $whPhones = array_unique(array_merge(getPhones($conn, 'Warehouse'), getPhones($conn, 'TeamLeader', 'Warehouse')));
+        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Permintaan batal masuk ke gudang.");
+
         safeSendJson(['success'=>true, 'message'=>'Request cancelled successfully.']);
     } else {
         safeSendJson(['success'=>false, 'message'=>$conn->error]);
@@ -424,13 +426,10 @@ if($action == 'updateStatus') {
     }
 }
 
-// --- 4. EXPORT DATA ---
 if($action == 'exportData') {
     if(!checkAccessSession('export_data')) safeSendJson(['success'=>false, 'message'=>'Unauthorized.', 'code'=>403]);
 
     $type = $input['export_type'] ?? '';
-    
-    // Perbaikan agar start dan end date tidak error Undefined Index
     $start_date = $input['start_date'] ?? '';
     $end_date = $input['end_date'] ?? '';
     $start = $conn->real_escape_string($start_date) . " 00:00:00";
@@ -450,7 +449,6 @@ if($action == 'exportData') {
         $res = $conn->query($sql);
         if($res){ while($row = $res->fetch_assoc()) { $data[] = $row; } }
     }
-    
     safeSendJson(['success'=>true, 'data'=>$data]);
 }
 ?>

@@ -35,12 +35,10 @@
     
     .status-badge { padding: 6px 12px; border-radius: 9999px; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; border: 1px solid transparent; letter-spacing: 0.05em; display: inline-flex; align-items: center; justify-content: center;}
     
-    /* Animation for Table Buttons */
     .btn-animated { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
     .btn-animated:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
     .btn-animated:active { transform: translateY(1px) scale(0.96); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
     
-    /* Clickable Card Filter Active State */
     .card-filter { cursor: pointer; transition: all 0.3s ease; }
     .card-filter:hover { transform: translateY(-4px); box-shadow: 0 15px 30px -5px rgba(0,0,0,0.1); z-index: 10; }
     .card-filter-active { ring: 4px; --tw-ring-color: rgba(255,255,255,0.6); --tw-ring-offset-width: 2px; --tw-ring-offset-color: transparent; box-shadow: 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color), 0 0 0 calc(4px + var(--tw-ring-offset-width)) var(--tw-ring-color), 0 10px 15px -3px rgba(0,0,0,0.1); transform: scale(1.02); z-index: 20; }
@@ -200,7 +198,7 @@
             <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left text-sm whitespace-nowrap">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold">
-                        <tr><th class="px-6 py-4" data-i18n="th_gr_id">GR ID & Date</th><th class="px-6 py-4" data-i18n="th_gr_by">Received By</th><th class="px-6 py-4" data-i18n="th_gr_rem">Remarks / Supplier</th><th class="px-6 py-4 w-1/2" data-i18n="th_gr_items">Items Received</th></tr>
+                        <tr><th class="px-6 py-4" data-i18n="th_gr_id">GR ID & Date</th><th class="px-6 py-4" data-i18n="th_gr_by">Received By</th><th class="px-6 py-4" data-i18n="th_gr_rem">Remarks / Supplier</th><th class="px-6 py-4 min-w-[300px]" data-i18n="th_gr_items">Items Received</th></tr>
                     </thead>
                     <tbody id="gr-table-body" class="divide-y divide-slate-100"></tbody>
                 </table>
@@ -470,7 +468,7 @@
       </div>
   </div>
 
-  <div id="modal-gr" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4" onclick="closeAllDropdowns(event)">
+  <div id="modal-gr" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
       <div class="bg-white rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[95vh] animate-slide-up overflow-hidden">
           <div class="bg-slate-50 px-6 py-5 border-b border-slate-200 flex justify-between items-center flex-none rounded-t-3xl">
               <h3 class="font-bold text-slate-800 tracking-tight"><i class="fas fa-truck-loading text-teal-600 mr-2 text-lg"></i> <span data-i18n="form_gr">Form Good Receive (GR)</span></h3>
@@ -499,7 +497,35 @@
                           <div class="col-span-2">UoM</div>
                       </div>
 
-                      <div id="gr-items-container" class="space-y-3 pb-24"></div>
+                      <div id="gr-items-container" class="space-y-3 pb-8"></div>
+                      
+                      <div class="border-t border-slate-200 pt-5 mt-4">
+                          <label class="text-sm font-black text-teal-800 uppercase tracking-wide mb-3 block"><i class="fas fa-camera mr-1.5"></i> Photo Proof *</label>
+                          <p class="text-[10px] text-slate-500 mb-3">Wajib lampirkan foto barang fisik yang diterima di gudang.</p>
+                          
+                          <div class="flex gap-2 mb-4">
+                              <button type="button" onclick="toggleGrPhotoSource('file')" id="btn-gr-file" class="flex-1 py-2.5 text-xs font-bold rounded-xl bg-teal-600 text-white shadow-md transition btn-animated"><i class="fas fa-file-upload mr-1.5"></i> Upload</button>
+                              <button type="button" onclick="toggleGrPhotoSource('camera')" id="btn-gr-cam" class="flex-1 py-2.5 text-xs font-bold rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition btn-animated"><i class="fas fa-camera mr-1.5"></i> Camera</button>
+                          </div>
+
+                          <div id="source-gr-file" class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:bg-slate-50 transition flex items-center justify-center h-48 bg-slate-50 cursor-pointer" onclick="document.getElementById('input-gr-photo').click()">
+                              <div class="space-y-3 pointer-events-none">
+                                  <i class="fas fa-cloud-upload-alt text-4xl text-slate-300"></i>
+                                  <p class="text-sm font-bold text-slate-500" id="gr-file-name">Click to upload image</p>
+                              </div>
+                              <input type="file" id="input-gr-photo" accept="image/*" class="hidden" onchange="document.getElementById('gr-file-name').innerText = this.files[0] ? this.files[0].name : 'Click to upload image'">
+                          </div>
+
+                          <div id="source-gr-camera" class="hidden border border-slate-200 rounded-2xl overflow-hidden bg-black relative h-56 shadow-inner">
+                              <video id="camera-stream-gr" class="w-full h-full object-cover transform scale-x-[-1]" autoplay playsinline></video>
+                              <canvas id="camera-canvas-gr" class="hidden"></canvas>
+                              <img id="camera-preview-gr" class="hidden w-full h-full object-cover">
+                              <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-4 z-20">
+                                  <button type="button" onclick="takeGrSnapshot()" id="btn-capture-gr" class="bg-white/90 backdrop-blur rounded-full p-3 shadow-lg text-slate-800 hover:text-teal-600 hover:scale-110 transition duration-200"><i class="fas fa-camera text-2xl"></i></button>
+                                  <button type="button" onclick="retakeGrPhoto()" id="btn-retake-gr" class="hidden bg-white/90 backdrop-blur rounded-full p-3 shadow-lg text-red-600 hover:scale-110 transition duration-200"><i class="fas fa-redo text-2xl"></i></button>
+                              </div>
+                          </div>
+                      </div>
                   </div>
               </form>
           </div>
@@ -518,7 +544,7 @@
           </div>
           <form onsubmit="event.preventDefault(); saveItem();" class="p-6">
               <input type="hidden" id="is-edit-mode" value="0">
-              <div class="mb-4"><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5" data-i18n="it_code">Item No (Code)</label><input type="text" id="it-code" class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 transition" required></div>
+              <div class="mb-4"><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5" data-i18n="it_code">Item No (Code)</label><input type="text" id="it-code" class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-50 bg-slate-50 transition" required></div>
               <div class="mb-4"><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5" data-i18n="it_name">Item Name</label><input type="text" id="it-name" class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition" required></div>
               <div class="mb-4"><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5" data-i18n="it_spec">Item Specification</label><input type="text" id="it-spec" class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="-"></div>
               
@@ -530,20 +556,6 @@
               
               <button type="submit" class="w-full py-3.5 bg-emerald-600 text-white rounded-xl font-bold shadow-md hover:bg-emerald-700 btn-animated" data-i18n="btn_save_item">Save Item</button>
           </form>
-      </div>
-  </div>
-
-  <div id="modal-reject" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 animate-slide-up text-center">
-          <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 shadow-inner"><i class="fas fa-times-circle text-2xl"></i></div>
-          <h3 class="font-black text-xl mb-2 text-slate-800 tracking-tight" data-i18n="rej_req">Reject Request</h3>
-          <p class="text-xs text-slate-500 mb-6">Please provide a reason for rejecting this request.</p>
-          <input type="hidden" id="rej-id">
-          <textarea id="rej-reason" class="w-full border border-slate-300 rounded-xl p-3.5 text-sm mb-6 outline-none focus:ring-2 focus:ring-red-500 transition" rows="3" data-i18n-ph="ph_rej" placeholder="Reason for rejection..." required></textarea>
-          <div class="flex gap-3">
-              <button onclick="closeModal('modal-reject')" class="flex-1 py-3 border-2 border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition btn-animated" data-i18n="btn_cancel">Cancel</button>
-              <button onclick="executeReject()" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-sm btn-animated shadow-md hover:bg-red-700" data-i18n="btn_conf_rej">Confirm Reject</button>
-          </div>
       </div>
   </div>
 
@@ -616,7 +628,12 @@
     let activeGiFilter = 'All'; 
     let currentLang = localStorage.getItem('portal_lang') || 'en';
 
-    // Image Upload Variables
+    // Image Upload Variables for GR
+    let videoStreamGr = null;
+    let capturedGrBase64 = null;
+    let activeSourceGr = 'file';
+
+    // Standard action photo variables
     let videoStreamAct = null;
     let capturedActBase64 = null;
     let activeSourceAct = 'file';
@@ -770,9 +787,11 @@
     };
 
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    
     function closeModal(id) { 
         document.getElementById(id).classList.add('hidden'); 
         if(id === 'modal-action-photo') stopCamera();
+        if(id === 'modal-gr') stopGrCamera();
         if(id === 'modal-image-viewer') { setTimeout(()=> {document.getElementById('img-viewer-src').src = '';}, 300); }
     }
     
@@ -1025,10 +1044,11 @@
                 });
             });
         } else if (type === 'GR') {
-            rows.push(["ID Receive", "Tanggal", "Diterima Oleh", "Remarks / Supplier", "Kode Barang", "Nama Barang", "Qty Masuk", "UoM"]);
+            rows.push(["ID Receive", "Tanggal", "Diterima Oleh", "Remarks / Supplier", "Link Foto Bukti", "Kode Barang", "Nama Barang", "Qty Masuk", "UoM"]);
             data.forEach(r => {
+                const fGr = (r.gr_photo && r.gr_photo !== '0') ? baseUrl + r.gr_photo : '-';
                 r.items.forEach(i => {
-                    rows.push([r.gr_id, r.created_at, r.fullname, r.remarks, i.code, i.name, parseInt(i.qty), i.uom]);
+                    rows.push([r.gr_id, r.created_at, r.fullname, r.remarks, fGr, i.code, i.name, parseInt(i.qty), i.uom]);
                 });
             });
         } else if (type === 'INV') {
@@ -1052,6 +1072,7 @@
         doc.setFontSize(9);
         doc.text(`Generated By: ${currentUser.fullname} (${currentUser.role}) | Date: ${new Date().toLocaleString('id-ID')}`, 14, 21);
 
+        const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
         let head = [];
         let body = [];
 
@@ -1073,13 +1094,15 @@
                 });
             });
         } else if (type === 'GR') {
-            head = [['GR ID / Date', 'Received By', 'Supplier/Remarks', 'Item Code & Name', 'Qty', 'UoM']];
+            head = [['GR ID / Date', 'Received By', 'Supplier/Remarks', 'Proof Link', 'Item Code & Name', 'Qty', 'UoM']];
             data.forEach(r => {
+                const fGr = (r.gr_photo && r.gr_photo !== '0') ? baseUrl + r.gr_photo : '-';
                 r.items.forEach(i => {
                     body.push([
                         `${r.gr_id}\n${r.created_at}`,
                         r.fullname,
                         r.remarks,
+                        fGr,
                         `${i.code}\n${i.name}`,
                         i.qty,
                         i.uom
@@ -1490,8 +1513,8 @@
                         <span class="text-xs font-black text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg shadow-inner border border-slate-200 whitespace-nowrap ml-2">${i.qty} <span class="text-[9px] font-bold text-slate-500">${i.uom}</span></span>
                     </div>
                     <div class="flex gap-2 text-[9px] text-slate-500 uppercase mt-1">
-                        <div class="bg-slate-50 px-2.5 py-1.5 rounded-md shadow-sm border border-slate-100 flex-1 flex items-center justify-between" title="Reason Code"><span class="opacity-70">RC</span> <span class="font-bold text-slate-700">${i.reason_code || '-'}</span></div>
-                        <div class="bg-slate-50 px-2.5 py-1.5 rounded-md shadow-sm border border-slate-100 flex-1 flex items-center justify-between" title="Cost Center"><span class="opacity-70">CC</span> <span class="font-bold text-slate-700">${i.cost_center || '-'}</span></div>
+                        <div class="bg-slate-50 px-2.5 py-1.5 rounded-md shadow-sm border border-slate-100 flex-1 flex items-center justify-between"><span class="opacity-70">RC</span> <span class="font-bold text-slate-700">${i.reason_code || '-'}</span></div>
+                        <div class="bg-slate-50 px-2.5 py-1.5 rounded-md shadow-sm border border-slate-100 flex-1 flex items-center justify-between"><span class="opacity-70">CC</span> <span class="font-bold text-slate-700">${i.cost_center || '-'}</span></div>
                     </div>
                 </div>`;
                 itemsHtmlTable += itemBlock;
@@ -1812,7 +1835,7 @@
                     <input type="text" class="w-full border border-slate-300 rounded-xl p-3 text-xs gi-item-display focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer bg-slate-50 font-medium transition" placeholder="${t('ph_search_item')}" onfocus="showDropdown(this, 'gi')" onkeyup="filterDropdown(this, 'gi')" autocomplete="off" required>
                     <input type="hidden" class="gi-item-code">
                     <input type="hidden" class="gi-item-name">
-                    <i class="fas fa-search absolute right-3 top-3.5 text-slate-400 pointer-events-none text-[12px]"></i>
+                    <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 pointer-events-none text-[12px]"></i>
                     <div class="dropdown-list hidden absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-2xl mt-1.5 max-h-48 overflow-y-auto dropdown-scroll left-0"></div>
                 </div>
             </div>
@@ -1978,9 +2001,18 @@
             itemsHtmlCard += '</div>';
 
             htmlArrayTable.push(`<tr class="border-b border-slate-100 hover:bg-slate-50 align-top transition-colors">
-                <td class="px-6 py-4"><div class="font-bold text-xs text-teal-700">${r.gr_id}</div><div class="text-[9px] text-slate-400 font-mono mt-0.5">${formatDt(r.created_at)}</div></td>
-                <td class="px-6 py-4"><div class="font-bold text-xs text-slate-700">${r.fullname}</div><div class="text-[10px] text-slate-500">Warehouse Admin</div></td>
-                <td class="px-6 py-4 text-xs text-slate-600 font-medium italic"><div class="bg-slate-50 p-2 rounded-lg border border-slate-100">"${r.remarks}"</div></td>
+                <td class="px-6 py-4">
+                    <div class="font-bold text-xs text-teal-700">${r.gr_id}</div>
+                    <div class="text-[9px] text-slate-400 font-mono mt-0.5">${formatDt(r.created_at)}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="font-bold text-xs text-slate-700">${r.fullname}</div>
+                    <div class="text-[10px] text-slate-500">Warehouse Admin</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-xs text-slate-600 font-medium italic bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-2">"${r.remarks}"</div>
+                    ${r.gr_photo && r.gr_photo !== '0' ? `<button onclick="viewPhoto('${r.gr_photo}')" class="text-[10px] bg-teal-100 text-teal-700 px-2 py-1 rounded shadow-sm hover:bg-teal-200 transition btn-animated"><i class="fas fa-camera mr-1"></i> View Proof</button>` : ''}
+                </td>
                 <td class="px-6 py-4 min-w-[300px] whitespace-normal">${itemsHtmlTable}</td>
             </tr>`);
 
@@ -1997,7 +2029,10 @@
                     </div>
                 </div>
                 <div class="mb-4">
-                    <div class="text-[10px] text-slate-400 uppercase font-bold mb-1.5">Remarks / Supplier:</div>
+                    <div class="flex justify-between items-end mb-1.5">
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">Remarks / Supplier:</div>
+                        ${r.gr_photo && r.gr_photo !== '0' ? `<button onclick="viewPhoto('${r.gr_photo}')" class="text-[10px] bg-teal-100 text-teal-700 px-2 py-1 rounded shadow-sm hover:bg-teal-200 transition btn-animated"><i class="fas fa-camera mr-1"></i> Proof</button>` : ''}
+                    </div>
                     <div class="text-xs font-medium italic bg-slate-50 p-2.5 rounded-xl border border-slate-100">"${r.remarks}"</div>
                 </div>
                 <div>
@@ -2015,8 +2050,80 @@
     function openGrModal() {
         document.getElementById('gr-remarks').value = '';
         document.getElementById('gr-items-container').innerHTML = '';
+        
+        // Reset Photo
+        document.getElementById('input-gr-photo').value = '';
+        document.getElementById('gr-file-name').innerText = 'Click to upload image';
+        toggleGrPhotoSource('file');
+
         grRowCount = 0; addGrRow();
         openModal('modal-gr');
+    }
+
+    function toggleGrPhotoSource(source) {
+        activeSourceGr = source;
+        const btnFile = document.getElementById('btn-gr-file');
+        const btnCam = document.getElementById('btn-gr-cam');
+        const contFile = document.getElementById('source-gr-file');
+        const contCam = document.getElementById('source-gr-camera');
+
+        if(source === 'camera') {
+            btnCam.classList.replace('bg-slate-100','bg-teal-600'); btnCam.classList.replace('text-slate-600','text-white');
+            btnFile.classList.replace('bg-teal-600','bg-slate-100'); btnFile.classList.replace('text-white','text-slate-600');
+            contFile.classList.add('hidden'); contCam.classList.remove('hidden');
+            startGrCamera();
+        } else {
+            btnFile.classList.replace('bg-slate-100','bg-teal-600'); btnFile.classList.replace('text-slate-600','text-white');
+            btnCam.classList.replace('bg-teal-600','bg-slate-100'); btnCam.classList.replace('text-white','text-slate-600');
+            contCam.classList.add('hidden'); contFile.classList.remove('hidden');
+            stopGrCamera();
+        }
+    }
+
+    async function startGrCamera() {
+        const video = document.getElementById('camera-stream-gr');
+        const preview = document.getElementById('camera-preview-gr');
+        preview.classList.add('hidden'); video.classList.remove('hidden');
+        document.getElementById('btn-capture-gr').classList.remove('hidden');
+        document.getElementById('btn-retake-gr').classList.add('hidden');
+        capturedGrBase64 = null;
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = stream;
+            videoStreamGr = stream;
+        } catch (err) { 
+            showCustomAlert("Camera Error", "Kamera tidak bisa diakses. Gunakan fitur Upload File."); 
+            toggleGrPhotoSource('file'); 
+        }
+    }
+
+    function stopGrCamera() {
+        if (videoStreamGr) { videoStreamGr.getTracks().forEach(track => track.stop()); videoStreamGr = null; }
+    }
+
+    function takeGrSnapshot() {
+        const video = document.getElementById('camera-stream-gr');
+        const canvas = document.getElementById('camera-canvas-gr');
+        const preview = document.getElementById('camera-preview-gr');
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedGrBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            preview.src = capturedGrBase64; 
+            preview.classList.remove('hidden'); 
+            video.classList.add('hidden');
+            document.getElementById('btn-capture-gr').classList.add('hidden');
+            document.getElementById('btn-retake-gr').classList.remove('hidden');
+        }
+    }
+
+    function retakeGrPhoto() {
+        capturedGrBase64 = null;
+        document.getElementById('camera-preview-gr').classList.add('hidden');
+        document.getElementById('camera-stream-gr').classList.remove('hidden');
+        document.getElementById('btn-capture-gr').classList.remove('hidden');
+        document.getElementById('btn-retake-gr').classList.add('hidden');
     }
 
     function addGrRow() {
@@ -2043,7 +2150,7 @@
                 <input type="text" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-center gr-stock text-slate-500 font-bold" placeholder="0" readonly tabindex="-1">
             </div>
             <div class="sm:col-span-3">
-                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5" data-i18n="qty_recv">Qty Masuk</label>
+                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Qty Masuk</label>
                 <input type="number" class="w-full border border-slate-300 rounded-xl p-3 text-xs text-center gr-qty focus:ring-2 focus:ring-teal-500 outline-none font-black text-slate-700 transition" placeholder="Qty Masuk" required min="1">
             </div>
             <div class="sm:col-span-2">
@@ -2054,7 +2161,7 @@
         document.getElementById('gr-items-container').appendChild(d);
     }
 
-    function submitGr() {
+    async function submitGr() {
         const remarks = document.getElementById('gr-remarks').value;
         if(!remarks) { showCustomAlert("Info", "Harap isi Remarks / Supplier."); return; }
 
@@ -2074,18 +2181,54 @@
         
         if(items.length === 0) { showCustomAlert("Info", "Minimal 1 barang masuk harus diisi."); return; }
         
-        showCustomConfirm("Konfirmasi", "Yakin memproses penerimaan ini? Stok di Inventory akan bertambah otomatis.", () => {
+        // Cek Foto Base64
+        let base64Data = null;
+        if (activeSourceGr === 'camera' && capturedGrBase64) {
+            base64Data = capturedGrBase64;
+        } else {
+            const fileInput = document.getElementById('input-gr-photo');
+            if (fileInput.files.length > 0) {
+                base64Data = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(fileInput.files[0]);
+                });
+            }
+        }
+
+        if (!base64Data) {
+            showCustomAlert("Error", "Harap lampirkan foto bukti penerimaan (GR) terlebih dahulu!");
+            return;
+        }
+
+        showCustomConfirm("Konfirmasi", "Yakin memproses penerimaan ini? Stok di Inventory akan bertambah otomatis.", async () => {
             const btn = document.getElementById('btn-submit-gr');
             const orgTxt = btn.innerHTML;
             btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-1.5"></i> Menyimpan...`;
 
-            const p = { action: 'submitGR', role: currentUser.role, department: currentUser.department, username: currentUser.username, fullname: currentUser.fullname, remarks: remarks, items: items };
-            fetch('api/gis.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { 
+            try {
+                const compressedBase64 = await compressImage(base64Data);
+                const p = { 
+                    action: 'submitGR', 
+                    role: currentUser.role, 
+                    department: currentUser.department, 
+                    username: currentUser.username, 
+                    fullname: currentUser.fullname, 
+                    remarks: remarks, 
+                    items: items,
+                    photoBase64: compressedBase64
+                };
+
+                fetch('api/gis.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { 
+                    btn.disabled = false; btn.innerHTML = orgTxt;
+                    if(res.code === 401) { logoutAction(); return; }
+                    if(res.success){ closeModal('modal-gr'); loadData(); showCustomAlert("Success", res.message); } 
+                    else { showCustomAlert("Error", res.message); } 
+                }).catch(e => { btn.disabled = false; btn.innerHTML = orgTxt; showCustomAlert("Error", t('err_conn')); });
+            } catch (err) {
                 btn.disabled = false; btn.innerHTML = orgTxt;
-                if(res.code === 401) { logoutAction(); return; }
-                if(res.success){ closeModal('modal-gr'); loadData(); showCustomAlert("Success", res.message); } 
-                else { showCustomAlert("Error", res.message); } 
-            }).catch(e => { btn.disabled = false; btn.innerHTML = orgTxt; showCustomAlert("Error", t('err_conn')); });
+                showCustomAlert("Error", "Gagal memproses foto.");
+            }
         });
     }
 
