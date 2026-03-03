@@ -124,7 +124,6 @@
       </div>
 
       <div id="view-gi" class="space-y-6 animate-slide-up">
-        
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
             <div id="card-gi-all" onclick="setGiFilter('All')" class="card-filter card-filter-active bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg flex items-center gap-3 relative group shine-effect text-white">
                 <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm z-10"><i class="fas fa-list"></i></div>
@@ -534,6 +533,20 @@
       </div>
   </div>
 
+  <div id="modal-reject" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 animate-slide-up text-center">
+          <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 shadow-inner"><i class="fas fa-times-circle text-2xl"></i></div>
+          <h3 class="font-black text-xl mb-2 text-slate-800 tracking-tight" data-i18n="rej_req">Reject Request</h3>
+          <p class="text-xs text-slate-500 mb-6">Please provide a reason for rejecting this request.</p>
+          <input type="hidden" id="rej-id">
+          <textarea id="rej-reason" class="w-full border border-slate-300 rounded-xl p-3.5 text-sm mb-6 outline-none focus:ring-2 focus:ring-red-500 transition" rows="3" data-i18n-ph="ph_rej" placeholder="Reason for rejection..." required></textarea>
+          <div class="flex gap-3">
+              <button onclick="closeModal('modal-reject')" class="flex-1 py-3 border-2 border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition btn-animated" data-i18n="btn_cancel">Cancel</button>
+              <button onclick="executeReject()" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-sm btn-animated shadow-md hover:bg-red-700" data-i18n="btn_conf_rej">Confirm Reject</button>
+          </div>
+      </div>
+  </div>
+
   <div id="modal-users" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col h-[85vh] animate-slide-up overflow-hidden">
         <div class="bg-slate-800 px-6 py-5 flex justify-between items-center flex-none">
@@ -593,6 +606,7 @@
   </div>
 
   <script>
+    // System Core
     let currentUser = null;
     let inventoryData = [];
     let giData = [];
@@ -602,6 +616,7 @@
     let activeGiFilter = 'All'; 
     let currentLang = localStorage.getItem('portal_lang') || 'en';
 
+    // Image Upload Variables
     let videoStreamAct = null;
     let capturedActBase64 = null;
     let activeSourceAct = 'file';
@@ -685,7 +700,6 @@
         if(grData.length>0) renderGR(grData);
     }
 
-    // --- LOGOUT ACTION ---
     function logoutAction() {
         fetch('api/auth.php', { method:'POST', body:JSON.stringify({action:'logout'}) })
         .then(() => { localStorage.removeItem('portal_user'); window.location.reload(); })
@@ -706,9 +720,8 @@
     window.onload = () => {
         applyLanguage();
         
-        // CHECK SESSION TO BACKEND
         fetch('api/auth.php', {method:'POST', body:JSON.stringify({action:'checkSession'})})
-        .then(r=>r.json()).then(res => {
+        .then(r => r.json()).then(res => {
             if(!res.success) {
                 localStorage.removeItem('portal_user');
             } else {
@@ -907,21 +920,34 @@
     }
 
     function loadData() {
-        fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getInventory'})}).then(r=>r.json()).then(d => { 
-            if(d.code === 401) { logoutAction(); return; }
-            inventoryData = d; renderInventory(); 
-        });
-        fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getRequests', role:currentUser.role, department:currentUser.department, username:currentUser.username})}).then(r=>r.json()).then(d => { 
-            if(d.code === 401) { logoutAction(); return; }
-            giData = d; applyGiFilters(); 
-        });
+        fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getInventory'})})
+        .then(r => r.json())
+        .then(d => { 
+            if(d && d.code === 401) { logoutAction(); return; }
+            inventoryData = Array.isArray(d) ? d : (d.data || []); 
+            renderInventory(inventoryData); 
+        })
+        .catch(e => { console.error(e); renderInventory([]); });
+
+        fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getRequests', role:currentUser.role, department:currentUser.department, username:currentUser.username})})
+        .then(r => r.json())
+        .then(d => { 
+            if(d && d.code === 401) { logoutAction(); return; }
+            giData = Array.isArray(d) ? d : (d.data || []); 
+            applyGiFilters(); 
+        })
+        .catch(e => { console.error(e); applyGiFilters(); });
         
         const rights = getMyRights();
         if(currentUser.role === 'Administrator' || rights.includes('gr_submit')) {
-            fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getReceives', role:currentUser.role})}).then(r=>r.json()).then(d => { 
-                if(d.code === 401) { logoutAction(); return; }
-                grData = d; renderGR(grData); 
-            });
+            fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getReceives', role:currentUser.role})})
+            .then(r => r.json())
+            .then(d => { 
+                if(d && d.code === 401) { logoutAction(); return; }
+                grData = Array.isArray(d) ? d : (d.data || []); 
+                renderGR(grData); 
+            })
+            .catch(e => { console.error(e); renderGR([]); });
         }
     }
 
@@ -1318,25 +1344,6 @@
         reader.readAsArrayBuffer(file);
     }
 
-    function filterGI() { applyGiFilters(); }
-    
-    function setGiFilter(status) {
-        activeGiFilter = status;
-        document.getElementById('card-gi-all').classList.remove('card-filter-active');
-        document.getElementById('card-gi-pending').classList.remove('card-filter-active');
-        document.getElementById('card-gi-wh').classList.remove('card-filter-active');
-        document.getElementById('card-gi-receive').classList.remove('card-filter-active');
-        document.getElementById('card-gi-done').classList.remove('card-filter-active');
-        
-        if(status === 'All') document.getElementById('card-gi-all').classList.add('card-filter-active');
-        if(status === 'Pending Head') document.getElementById('card-gi-pending').classList.add('card-filter-active');
-        if(status === 'Pending Warehouse') document.getElementById('card-gi-wh').classList.add('card-filter-active');
-        if(status === 'Pending Receive') document.getElementById('card-gi-receive').classList.add('card-filter-active');
-        if(status === 'Completed') document.getElementById('card-gi-done').classList.add('card-filter-active');
-        
-        applyGiFilters();
-    }
-
     function applyGiFilters() {
         const term = document.getElementById('search-gi').value.toLowerCase();
         let filtered = giData.filter(r => 
@@ -1521,7 +1528,6 @@
             let btnTable = actionBtnsTable.length > 0 ? `<div class="flex flex-col w-[120px] mx-auto">${actionBtnsTable.join('')}</div>` : '<span class="text-slate-300 text-center block">-</span>';
             let btnCard = actionBtnsCard.length > 0 ? actionBtnsCard.join('') : '';
 
-            // TABLE ROW
             htmlArrayTable.push(`<tr class="border-b border-slate-100 hover:bg-slate-50/50 align-top transition-colors">
                 <td class="px-6 py-5"><div class="font-black text-xs text-indigo-700 mb-1">${r.req_id}</div><div class="text-[10px] text-slate-400 font-mono font-medium">${r.created_at}</div></td>
                 <td class="px-6 py-5"><div class="font-bold text-xs text-slate-800">${r.fullname}</div><div class="text-[10px] text-slate-500 font-medium mb-1.5">${r.department}</div><div class="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md inline-block font-bold border border-slate-200 shadow-sm">Sec: ${r.section || '-'}</div></td>
@@ -1533,7 +1539,6 @@
                 <td class="px-6 py-5 text-right align-middle">${btnTable}</td>
             </tr>`);
 
-            // MOBILE CARD
             htmlArrayCard.push(`
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 relative transition-all hover:shadow-md">
                 <div class="flex justify-between items-start mb-4 border-b border-slate-100 pb-4">
@@ -1801,13 +1806,13 @@
         
         d.innerHTML = `
             <button type="button" onclick="document.getElementById('${d.id}').remove()" class="absolute -top-2.5 -right-2.5 bg-red-100 text-red-600 rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-500 hover:text-white transition shadow-md btn-animated z-10"><i class="fas fa-times text-[10px]"></i></button>
-            <div class="sm:col-span-4">
+            <div class="sm:col-span-3">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Item</label>
                 <div class="relative w-full">
                     <input type="text" class="w-full border border-slate-300 rounded-xl p-3 text-xs gi-item-display focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer bg-slate-50 font-medium transition" placeholder="${t('ph_search_item')}" onfocus="showDropdown(this, 'gi')" onkeyup="filterDropdown(this, 'gi')" autocomplete="off" required>
                     <input type="hidden" class="gi-item-code">
                     <input type="hidden" class="gi-item-name">
-                    <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 pointer-events-none text-[12px]"></i>
+                    <i class="fas fa-search absolute right-3 top-3.5 text-slate-400 pointer-events-none text-[12px]"></i>
                     <div class="dropdown-list hidden absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-2xl mt-1.5 max-h-48 overflow-y-auto dropdown-scroll left-0"></div>
                 </div>
             </div>
@@ -1823,7 +1828,7 @@
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">UoM</label>
                 <input type="text" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-center gi-uom text-slate-500 font-bold" placeholder="UoM" readonly tabindex="-1">
             </div>
-            <div class="sm:col-span-1">
+            <div class="sm:col-span-2">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Reason Code</label>
                 <input type="text" class="w-full border border-slate-300 rounded-xl p-3 text-xs text-center gi-reason focus:ring-2 focus:ring-indigo-500 outline-none font-medium transition" placeholder="Code">
             </div>
@@ -2023,7 +2028,7 @@
         
         d.innerHTML = `
             <button type="button" onclick="document.getElementById('${d.id}').remove()" class="absolute -top-2.5 -right-2.5 bg-red-100 text-red-600 rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-500 hover:text-white transition shadow-md btn-animated z-10"><i class="fas fa-times text-[10px]"></i></button>
-            <div class="sm:col-span-6">
+            <div class="sm:col-span-5">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Item</label>
                 <div class="relative w-full">
                     <input type="text" class="w-full border border-slate-300 rounded-xl p-3 text-xs gr-item-display focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer bg-slate-50 font-medium transition" placeholder="${t('ph_search_item')}" onfocus="showDropdown(this, 'gr')" onkeyup="filterDropdown(this, 'gr')" autocomplete="off" required>
@@ -2033,11 +2038,15 @@
                     <div class="dropdown-list hidden absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-2xl mt-1.5 max-h-48 overflow-y-auto dropdown-scroll left-0"></div>
                 </div>
             </div>
-            <div class="sm:col-span-3">
-                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Qty Masuk</label>
-                <input type="number" class="w-full border border-slate-300 rounded-xl p-3 text-xs text-center gr-qty focus:ring-2 focus:ring-teal-500 outline-none font-black text-slate-700 transition" placeholder="Qty Masuk" required min="1">
+            <div class="sm:col-span-2">
+                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5" data-i18n="curr_stk_short">Curr. Stock</label>
+                <input type="text" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-center gr-stock text-slate-500 font-bold" placeholder="0" readonly tabindex="-1">
             </div>
             <div class="sm:col-span-3">
+                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5" data-i18n="qty_recv">Qty Masuk</label>
+                <input type="number" class="w-full border border-slate-300 rounded-xl p-3 text-xs text-center gr-qty focus:ring-2 focus:ring-teal-500 outline-none font-black text-slate-700 transition" placeholder="Qty Masuk" required min="1">
+            </div>
+            <div class="sm:col-span-2">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">UoM</label>
                 <input type="text" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-center gr-uom text-slate-500 font-bold" placeholder="UoM" readonly tabindex="-1">
             </div>
@@ -2082,7 +2091,7 @@
 
     // --- USERS MANAGEMENT (Admin Only) ---
     function openManageUsers() { openModal('modal-users'); loadUsers(); }
-    function loadUsers() { fetch('api/users.php', {method:'POST', body:JSON.stringify({action:'getAllUsers'})}).then(r=>r.json()).then(d => { if(d.code===401){logoutAction(); return;} allUsers = d; renderUsers(d); }); }
+    function loadUsers() { fetch('api/users.php', {method:'POST', body:JSON.stringify({action:'getAllUsers'})}).then(r=>r.json()).then(d => { if(d.code===401){logoutAction(); return;} allUsers = Array.isArray(d) ? d : (d.data || []); renderUsers(allUsers); }); }
     function renderUsers(data) {
         const c = document.getElementById('user-list'); c.innerHTML = '';
         let htmlArray = [];
