@@ -1,5 +1,5 @@
 <?php
-session_start(); // MEMULAI SESI SERVER TERENKRIPSI
+session_start();
 require 'db.php';
 require 'helper.php';
 
@@ -19,9 +19,8 @@ if ($action == 'login') {
     if ($res && $res->num_rows > 0) {
         $user = $res->fetch_assoc();
         if (password_verify($p, $user['password'])) {
-            unset($user['password']); // Jangan pernah kirim password ke frontend
+            unset($user['password']); 
             
-            // SIMPAN DATA KE SESSION SERVER (TIDAK BISA DIHACK DARI LUAR)
             $_SESSION['user_logged_in'] = true;
             $_SESSION['user_data'] = $user;
             
@@ -52,14 +51,20 @@ if ($action == 'requestReset') {
     $res = $conn->query("SELECT phone FROM users WHERE username = '$u'");
     if ($res && $res->num_rows > 0) {
         $phone = $res->fetch_assoc()['phone'];
-        if (!$phone) sendJson(['success' => false, 'message' => 'Nomor WA tidak terdaftar untuk user ini.']);
+        if (!$phone) sendJson(['success' => false, 'message' => 'Nomor WA tidak terdaftar untuk user ini. Hubungi Admin.']);
         
         $token = bin2hex(random_bytes(16));
         $conn->query("UPDATE users SET reset_token = '$token' WHERE username = '$u'");
         
+        // PERBAIKAN URL GENERATOR (Mendeteksi Sub-folder otomatis)
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
         $domain = $_SERVER['HTTP_HOST'];
-        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-        $resetLink = $protocol . "://" . $domain . "/reset.php?token=" . $token;
+        
+        // Mengambil letak folder aplikasi (menghapus '/api' dari path URL)
+        $dir = dirname(dirname($_SERVER['SCRIPT_NAME'])); 
+        if ($dir === '/' || $dir === '\\') { rtrim($dir, '/\\'); }
+        
+        $resetLink = $protocol . $domain . $dir . "/reset.php?token=" . $token;
         
         $msg = "🔐 *Permintaan Reset Password*\n\nKlik link berikut untuk membuat password baru Anda:\n$resetLink\n\nJika Anda tidak meminta ini, abaikan pesan ini.";
         sendWA($phone, $msg);
@@ -76,8 +81,9 @@ if ($action == 'confirmReset') {
     
     $res = $conn->query("SELECT id FROM users WHERE reset_token = '$token'");
     if ($res && $res->num_rows > 0) {
+        // Kosongkan token setelah dipakai agar link kadaluarsa
         $conn->query("UPDATE users SET password = '$newPass', reset_token = NULL WHERE reset_token = '$token'");
-        sendJson(['success' => true, 'message' => 'Password berhasil diperbarui.']);
+        sendJson(['success' => true, 'message' => 'Password berhasil diperbarui. Silakan login.']);
     } else {
         sendJson(['success' => false, 'message' => 'Token tidak valid atau sudah kadaluarsa.']);
     }
