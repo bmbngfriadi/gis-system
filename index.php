@@ -107,8 +107,7 @@
              
              <button onclick="openProfileModal()" class="bg-indigo-900/40 p-2.5 rounded-full hover:bg-indigo-900 text-xs border border-indigo-400/50 transition btn-animated" title="My Profile"><i class="fas fa-user-circle"></i></button>
              <button id="btn-admin-users" onclick="openManageUsers()" class="hidden bg-indigo-900/40 p-2.5 rounded-full hover:bg-indigo-900 text-xs border border-indigo-400/50 transition btn-animated" title="Manage Users"><i class="fas fa-users-cog"></i></button>
-             
-             <button onclick="logout()" class="bg-rose-600 p-2.5 rounded-full hover:bg-rose-700 text-xs border border-rose-400/50 transition btn-animated" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+             <button onclick="logoutAction()" class="bg-rose-600 p-2.5 rounded-full hover:bg-rose-700 text-xs border border-rose-400/50 transition btn-animated" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
          </div>
        </div>
     </nav>
@@ -164,9 +163,7 @@
         </div>
 
         <div class="bg-transparent sm:bg-white sm:rounded-2xl sm:shadow-sm sm:border sm:border-slate-200 overflow-hidden">
-            
             <div id="gi-card-container" class="md:hidden flex flex-col gap-4"></div>
-
             <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left text-sm whitespace-nowrap">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold">
@@ -201,7 +198,6 @@
 
         <div class="bg-transparent sm:bg-white sm:rounded-2xl sm:shadow-sm sm:border sm:border-slate-200 overflow-hidden">
             <div id="gr-card-container" class="md:hidden flex flex-col gap-4"></div>
-
             <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left text-sm whitespace-nowrap">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold">
@@ -240,7 +236,6 @@
 
         <div class="bg-transparent sm:bg-white sm:rounded-2xl sm:shadow-sm sm:border sm:border-slate-200 overflow-hidden">
             <div id="inv-card-container" class="md:hidden flex flex-col gap-4"></div>
-
             <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left text-sm whitespace-nowrap">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold">
@@ -457,9 +452,10 @@
                       </div>
                       
                       <div class="hidden sm:grid grid-cols-12 gap-3 mb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-                          <div class="col-span-4 text-left" data-i18n="th_it_name">Item No & Name</div>
+                          <div class="col-span-3 text-left" data-i18n="th_it_name">Item No & Name</div>
+                          <div class="col-span-2" data-i18n="curr_stk_short">Curr. Stock</div>
                           <div class="col-span-2" data-i18n="req_qty">Requested Qty</div>
-                          <div class="col-span-2">UoM</div>
+                          <div class="col-span-1">UoM</div>
                           <div class="col-span-2" data-i18n="rsn_code">Reason Code</div>
                           <div class="col-span-2 text-rose-500 font-black" data-i18n="cost_ctr">Cost Center *</div>
                       </div>
@@ -498,9 +494,10 @@
                       </div>
                       
                       <div class="hidden sm:grid grid-cols-12 gap-3 mb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-                          <div class="col-span-6 text-left" data-i18n="th_it_name">Item No & Name</div>
+                          <div class="col-span-5 text-left" data-i18n="th_it_name">Item No & Name</div>
+                          <div class="col-span-2" data-i18n="curr_stk_short">Curr. Stock</div>
                           <div class="col-span-3" data-i18n="qty_recv">Qty Received</div>
-                          <div class="col-span-3">UoM</div>
+                          <div class="col-span-2">UoM</div>
                       </div>
 
                       <div id="gr-items-container" class="space-y-3 pb-24"></div>
@@ -534,20 +531,6 @@
               
               <button type="submit" class="w-full py-3.5 bg-emerald-600 text-white rounded-xl font-bold shadow-md hover:bg-emerald-700 btn-animated" data-i18n="btn_save_item">Save Item</button>
           </form>
-      </div>
-  </div>
-
-  <div id="modal-reject" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 animate-slide-up text-center">
-          <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 shadow-inner"><i class="fas fa-times-circle text-2xl"></i></div>
-          <h3 class="font-black text-xl mb-2 text-slate-800 tracking-tight" data-i18n="rej_req">Reject Request</h3>
-          <p class="text-xs text-slate-500 mb-6">Please provide a reason for rejecting this request.</p>
-          <input type="hidden" id="rej-id">
-          <textarea id="rej-reason" class="w-full border border-slate-300 rounded-xl p-3.5 text-sm mb-6 outline-none focus:ring-2 focus:ring-red-500 transition" rows="3" data-i18n-ph="ph_rej" placeholder="Reason for rejection..." required></textarea>
-          <div class="flex gap-3">
-              <button onclick="closeModal('modal-reject')" class="flex-1 py-3 border-2 border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition btn-animated" data-i18n="btn_cancel">Cancel</button>
-              <button onclick="executeReject()" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-sm btn-animated shadow-md hover:bg-red-700" data-i18n="btn_conf_rej">Confirm Reject</button>
-          </div>
       </div>
   </div>
 
@@ -610,7 +593,6 @@
   </div>
 
   <script>
-    // System Core & Translations
     let currentUser = null;
     let inventoryData = [];
     let giData = [];
@@ -620,7 +602,6 @@
     let activeGiFilter = 'All'; 
     let currentLang = localStorage.getItem('portal_lang') || 'en';
 
-    // Image Upload Variables
     let videoStreamAct = null;
     let capturedActBase64 = null;
     let activeSourceAct = 'file';
@@ -643,7 +624,7 @@
             my_profile: "My Profile", dept: "Department", fullname: "Fullname", wa_phone: "WhatsApp No.", editable: "(Editable)", new_pass: "New Password", pass_note: "(Leave blank if unchanged)", btn_update_prof: "Update Profile",
             form_gi: "Form Good Issue", req_dept: "Requestor / Dept", sec_req: "Section Requestor", ph_sec_req: "Ex: Maintenance / Production",
             act_desc: "Activities Description", ph_act_desc: "Explain activities or reason...", item_list: "Item List", add_row: "Add Item Row",
-            req_qty: "Requested Qty", rsn_code: "Reason Code", cost_ctr: "Cost Center *", btn_submit_form: "Submit Form",
+            curr_stk_short: "Curr. Stock", req_qty: "Requested Qty", rsn_code: "Reason Code", cost_ctr: "Cost Center *", btn_submit_form: "Submit Form",
             form_gr: "Form Good Receive (GR)", info_gr: "Input incoming items. Data will automatically update Master Inventory stock.", rem_supp: "Remarks / Supplier / PO Number", inc_items: "Incoming Items", qty_recv: "Qty Received", btn_save_stk: "Save & Update Stock",
             master_item: "Master Item", it_code: "Item No (Code)", it_name: "Item Name", it_spec: "Item Specification", cat: "Category", curr_stk: "Current Stock", btn_save_item: "Save Item",
             rej_req: "Reject Request", ph_rej: "Reason for rejection...", btn_conf_rej: "Confirm Reject",
@@ -670,7 +651,7 @@
             my_profile: "Profil Saya", dept: "Departemen", fullname: "Nama Lengkap", wa_phone: "No. WhatsApp", editable: "(Dapat Diubah)", new_pass: "Kata Sandi Baru", pass_note: "(Kosongkan jika tidak diubah)", btn_update_prof: "Perbarui Profil",
             form_gi: "Formulir Pengeluaran (GI)", req_dept: "Pemohon / Dept", sec_req: "Seksi Pemohon", ph_sec_req: "Cth: Maintenance / Produksi",
             act_desc: "Deskripsi Aktivitas", ph_act_desc: "Jelaskan aktivitas atau alasan...", item_list: "Daftar Barang", add_row: "Tambah Baris",
-            req_qty: "Jumlah Diminta", rsn_code: "Kode Alasan", cost_ctr: "Cost Center *", btn_submit_form: "Kirim Formulir",
+            curr_stk_short: "Sisa Stok", req_qty: "Jumlah Diminta", rsn_code: "Kode Alasan", cost_ctr: "Pusat Biaya *", btn_submit_form: "Kirim Formulir",
             form_gr: "Formulir Penerimaan (GR)", info_gr: "Input barang masuk. Data akan otomatis menambah stok Master Inventaris.", rem_supp: "Catatan / Suplier / No. PO", inc_items: "Barang Masuk", qty_recv: "Jml Diterima", btn_save_stk: "Simpan & Perbarui Stok",
             master_item: "Master Barang", it_code: "No/Kode Barang", it_name: "Nama Barang", it_spec: "Spesifikasi Barang", cat: "Kategori", curr_stk: "Stok Saat Ini", btn_save_item: "Simpan Barang",
             rej_req: "Tolak Permintaan", ph_rej: "Alasan penolakan...", btn_conf_rej: "Konfirmasi Tolak",
@@ -704,6 +685,13 @@
         if(grData.length>0) renderGR(grData);
     }
 
+    // --- LOGOUT ACTION ---
+    function logoutAction() {
+        fetch('api/auth.php', { method:'POST', body:JSON.stringify({action:'logout'}) })
+        .then(() => { localStorage.removeItem('portal_user'); window.location.reload(); })
+        .catch(() => { localStorage.removeItem('portal_user'); window.location.reload(); });
+    }
+
     function getMyRights() {
         if (!currentUser) return [];
         if (currentUser.role === 'Administrator') return ['gi_submit', 'gr_submit', 'item_add', 'item_edit', 'stock_edit', 'export_data'];
@@ -717,49 +705,57 @@
 
     window.onload = () => {
         applyLanguage();
-        const stored = localStorage.getItem('portal_user');
-        if(stored) {
-            currentUser = JSON.parse(stored);
-            document.getElementById('login-view').classList.add('hidden-important');
-            document.getElementById('app-view').classList.remove('hidden-important');
-            document.getElementById('nav-user').innerText = currentUser.fullname;
-            document.getElementById('nav-role').innerText = currentUser.role + " - " + currentUser.department;
-            
-            const rights = getMyRights();
-            const isAdmin = currentUser.role === 'Administrator';
-            
-            if(isAdmin || rights.includes('gi_submit')) {
-                const btnGi = document.getElementById('btn-create-gi');
-                if(btnGi) btnGi.classList.remove('hidden');
+        
+        // CHECK SESSION TO BACKEND
+        fetch('api/auth.php', {method:'POST', body:JSON.stringify({action:'checkSession'})})
+        .then(r=>r.json()).then(res => {
+            if(!res.success) {
+                localStorage.removeItem('portal_user');
+            } else {
+                const stored = localStorage.getItem('portal_user');
+                if(stored) {
+                    currentUser = JSON.parse(stored);
+                    document.getElementById('login-view').classList.add('hidden-important');
+                    document.getElementById('app-view').classList.remove('hidden-important');
+                    document.getElementById('nav-user').innerText = currentUser.fullname;
+                    document.getElementById('nav-role').innerText = currentUser.role + " - " + currentUser.department;
+                    
+                    const rights = getMyRights();
+                    const isAdmin = currentUser.role === 'Administrator';
+                    
+                    if(isAdmin || rights.includes('gi_submit')) {
+                        const btnGi = document.getElementById('btn-create-gi');
+                        if(btnGi) btnGi.classList.remove('hidden');
+                    }
+        
+                    if(isAdmin || rights.includes('gr_submit')) {
+                        document.getElementById('tab-gr').classList.remove('hidden');
+                        document.getElementById('btn-create-gr')?.classList.remove('hidden');
+                    }
+                    if(isAdmin || rights.includes('item_add')) {
+                        document.getElementById('btn-add-item').classList.remove('hidden');
+                    }
+                    if(isAdmin || rights.includes('item_edit') || rights.includes('stock_edit')) {
+                        document.getElementById('th-inv-act').classList.remove('hidden');
+                    }
+                    if(isAdmin || rights.includes('export_data')) {
+                        document.getElementById('btn-export-global').classList.remove('hidden');
+                    }
+        
+                    if(isAdmin) {
+                        document.getElementById('btn-admin-users').classList.remove('hidden');
+                        document.getElementById('btn-tpl-item').classList.remove('hidden');
+                        document.getElementById('btn-imp-item').classList.remove('hidden');
+                        document.getElementById('btn-exp-item').classList.remove('hidden');
+                    }
+                    
+                    switchTab(rights.includes('gi_submit') ? 'gi' : 'inv');
+                    loadData();
+                }
             }
-
-            if(isAdmin || rights.includes('gr_submit')) {
-                document.getElementById('tab-gr').classList.remove('hidden');
-                document.getElementById('btn-create-gr')?.classList.remove('hidden');
-            }
-            if(isAdmin || rights.includes('item_add')) {
-                document.getElementById('btn-add-item').classList.remove('hidden');
-            }
-            if(isAdmin || rights.includes('item_edit') || rights.includes('stock_edit')) {
-                document.getElementById('th-inv-act').classList.remove('hidden');
-            }
-            if(isAdmin || rights.includes('export_data')) {
-                document.getElementById('btn-export-global').classList.remove('hidden');
-            }
-
-            if(isAdmin) {
-                document.getElementById('btn-admin-users').classList.remove('hidden');
-                document.getElementById('btn-tpl-item').classList.remove('hidden');
-                document.getElementById('btn-imp-item').classList.remove('hidden');
-                document.getElementById('btn-exp-item').classList.remove('hidden');
-            }
-            
-            switchTab(rights.includes('gi_submit') ? 'gi' : 'inv');
-            loadData();
-        }
+        }).catch(err => { console.log(err); });
     };
 
-    // Custom Modal Functions
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
     function closeModal(id) { 
         document.getElementById(id).classList.add('hidden'); 
@@ -786,7 +782,6 @@
         globalConfirmCallback = null;
     }
 
-    // --- LOGIN HANDLER & REVEAL PASSWORD ---
     function toggleLoginPass() {
         const p = document.getElementById('login-p');
         const icon = document.getElementById('icon-login-pass');
@@ -819,9 +814,6 @@
         });
     }
 
-    function logout() { localStorage.removeItem('portal_user'); window.location.reload(); }
-
-    // --- MANAGE PROFILE (Semua User) ---
     function openProfileModal() {
         document.getElementById('prof-nik').value = currentUser.nik || '-';
         document.getElementById('prof-name').value = currentUser.fullname;
@@ -847,6 +839,7 @@
         .then(r => r.json()).then(res => {
             btn.disabled = false;
             btn.innerHTML = orgHtml;
+            if(res.code === 401) { logoutAction(); return; }
             if(res.success) {
                 showCustomAlert("Success", "Profil berhasil diperbarui.");
                 currentUser.phone = phone; 
@@ -860,7 +853,6 @@
         });
     }
 
-    // --- FUNGSI LUPA PASSWORD ---
     function openForgotModal() { document.getElementById('forgot-username').value = ''; openModal('modal-forgot'); }
 
     function submitForgot() {
@@ -886,13 +878,11 @@
         .catch(err => { btn.disabled = false; btn.innerText = originalText; showCustomAlert("Error", t('err_conn')); });
     }
 
-    // Navigation
     function switchTab(tab) {
         document.getElementById('view-gi').classList.add('hidden');
         document.getElementById('view-gr').classList.add('hidden');
         document.getElementById('view-inv').classList.add('hidden');
         
-        // Hide card containers to ensure clean state
         if(document.getElementById('gi-card-container')) document.getElementById('gi-card-container').classList.add('hidden');
         if(document.getElementById('gr-card-container')) document.getElementById('gr-card-container').classList.add('hidden');
         if(document.getElementById('inv-card-container')) document.getElementById('inv-card-container').classList.add('hidden');
@@ -909,7 +899,6 @@
 
         document.getElementById(`view-${tab}`).classList.remove('hidden');
         
-        // Unhide the appropriate card container if on mobile
         if(document.getElementById(`${tab}-card-container`)) {
             document.getElementById(`${tab}-card-container`).classList.remove('hidden');
         }
@@ -917,18 +906,25 @@
         document.getElementById(`tab-${tab}`).className = "px-5 py-2.5 text-sm tab-active transition-colors whitespace-nowrap flex items-center border-b-2 border-indigo-600";
     }
 
-    // Data Loading
     function loadData() {
-        fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getInventory'})}).then(r=>r.json()).then(d => { inventoryData = d; renderInventory(); });
-        fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getRequests', role:currentUser.role, department:currentUser.department, username:currentUser.username})}).then(r=>r.json()).then(d => { giData = d; applyGiFilters(); });
+        fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getInventory'})}).then(r=>r.json()).then(d => { 
+            if(d.code === 401) { logoutAction(); return; }
+            inventoryData = d; renderInventory(); 
+        });
+        fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getRequests', role:currentUser.role, department:currentUser.department, username:currentUser.username})}).then(r=>r.json()).then(d => { 
+            if(d.code === 401) { logoutAction(); return; }
+            giData = d; applyGiFilters(); 
+        });
         
         const rights = getMyRights();
         if(currentUser.role === 'Administrator' || rights.includes('gr_submit')) {
-            fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getReceives', role:currentUser.role})}).then(r=>r.json()).then(d => { grData = d; renderGR(grData); });
+            fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'getReceives', role:currentUser.role})}).then(r=>r.json()).then(d => { 
+                if(d.code === 401) { logoutAction(); return; }
+                grData = d; renderGR(grData); 
+            });
         }
     }
 
-    // --- GLOBAL EXPORT ---
     function openExportModal() {
         document.getElementById('exp-type').value = 'GI';
         document.getElementById('exp-start').value = '';
@@ -959,19 +955,13 @@
 
         document.getElementById('exp-loading').classList.remove('hidden');
 
-        const p = {
-            action: 'exportData',
-            role: currentUser.role,
-            username: currentUser.username,
-            export_type: type,
-            start_date: start,
-            end_date: end
-        };
+        const p = { action: 'exportData', role: currentUser.role, username: currentUser.username, export_type: type, start_date: start, end_date: end };
 
         fetch('api/gis.php', { method: 'POST', body: JSON.stringify(p) })
         .then(r => r.json())
         .then(res => {
             document.getElementById('exp-loading').classList.add('hidden');
+            if(res.code === 401) { logoutAction(); return; }
             if(res.success) {
                 if(!res.data || res.data.length === 0) {
                     showCustomAlert("Info", "Tidak ada data pada rentang waktu yang dipilih.");
@@ -1091,7 +1081,6 @@
         doc.save(`GIS_Report_${type}_${new Date().getTime()}.pdf`);
     }
 
-    // --- VIEW PHOTO HELPER ---
     function viewPhoto(url) {
         if (!url || url === 'null' || url === 'undefined' || url.trim() === '' || url === '0') {
             showCustomAlert(t('info'), "Tidak ada bukti foto.");
@@ -1103,7 +1092,6 @@
         openModal('modal-image-viewer');
     }
 
-    // --- CUSTOM DROPDOWN SELECT ITEM (OPTIMIZED FOR HEAVY LOAD) ---
     function showDropdown(inp, type) {
         document.querySelectorAll('.dropdown-list').forEach(e => e.classList.add('hidden'));
         const list = inp.parentElement.querySelector('.dropdown-list');
@@ -1111,9 +1099,7 @@
         renderDropdownItems(inp, type);
     }
 
-    function filterDropdown(inp, type) {
-        renderDropdownItems(inp, type);
-    }
+    function filterDropdown(inp, type) { renderDropdownItems(inp, type); }
 
     function renderDropdownItems(inp, type) {
         const list = inp.parentElement.querySelector('.dropdown-list');
@@ -1147,7 +1133,6 @@
 
     function selectItemOption(el, code, name, spec, stock, uom, type) {
         const row = el.closest(`div[id^="${type}-row-"]`);
-        
         let displayVal = code + ' - ' + name;
         if(spec) displayVal += ' (' + spec + ')';
         
@@ -1155,6 +1140,9 @@
         row.querySelector(`.${type}-item-code`).value = code;
         row.querySelector(`.${type}-item-name`).value = spec ? name + ' - ' + spec : name; 
         row.querySelector(`.${type}-uom`).value = uom;
+        
+        const stockInput = row.querySelector(`.${type}-stock`);
+        if(stockInput) stockInput.value = stock;
         
         if(type === 'gi') {
             const qtyInput = row.querySelector(`.${type}-qty`);
@@ -1168,7 +1156,6 @@
         if(!e.target.closest('.relative.w-full')) { document.querySelectorAll('.dropdown-list').forEach(el => el.classList.add('hidden')); }
     });
 
-    // --- INVENTORY ---
     function filterInventory() {
         const term = document.getElementById('search-inv').value.toLowerCase();
         const filtered = inventoryData.filter(r => 
@@ -1201,7 +1188,6 @@
         let htmlArrayCard = [];
 
         displayData.forEach(r => {
-            // Table View
             let actTable = canEditAny ? `<td class="px-6 py-4 text-right"><button onclick="openEditItem('${(r.item_code||'').replace(/'/g, "\\'")}','${(r.item_name||'').replace(/'/g, "\\'")}','${(r.item_spec||'').replace(/'/g, "\\'")}','${(r.category||'').replace(/'/g, "\\'")}','${(r.uom||'').replace(/'/g, "\\'")}','${r.stock}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 p-2 rounded-lg shadow-sm transition btn-animated"><i class="fas fa-edit"></i></button></td>` : `<td class="px-6 py-4 text-right hidden" id="th-inv-act"></td>`;
             htmlArrayTable.push(`<tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors duration-200">
                 <td class="px-6 py-4 font-mono text-xs font-bold text-indigo-600">${r.item_code}</td>
@@ -1214,7 +1200,6 @@
                 ${actTable}
             </tr>`);
 
-            // Mobile Card View
             let actCard = canEditAny ? `<button onclick="openEditItem('${(r.item_code||'').replace(/'/g, "\\'")}','${(r.item_name||'').replace(/'/g, "\\'")}','${(r.item_spec||'').replace(/'/g, "\\'")}','${(r.category||'').replace(/'/g, "\\'")}','${(r.uom||'').replace(/'/g, "\\'")}','${r.stock}')" class="text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-50 p-2.5 rounded-xl shadow-sm transition btn-animated"><i class="fas fa-edit"></i></button>` : ``;
             htmlArrayCard.push(`
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-1 transition-all hover:shadow-md">
@@ -1263,42 +1248,33 @@
         const canEditStock = isAdmin || rights.includes('stock_edit');
 
         document.getElementById('it-code').value = c; document.getElementById('it-code').disabled = true;
-        
         document.getElementById('it-name').value = n; document.getElementById('it-name').disabled = !canEditInfo;
         document.getElementById('it-spec').value = spec; document.getElementById('it-spec').disabled = !canEditInfo;
         document.getElementById('it-cat').value = cat; document.getElementById('it-cat').disabled = !canEditInfo;
         document.getElementById('it-uom').value = u; document.getElementById('it-uom').disabled = !canEditInfo;
-        
         document.getElementById('it-stock').value = s; document.getElementById('it-stock').disabled = !canEditStock;
-        
         document.getElementById('is-edit-mode').value = '1';
         openModal('modal-item');
     }
 
     function saveItem() {
         const p = { 
-            action: 'saveItem', 
-            role: currentUser.role, 
-            department: currentUser.department,
-            username: currentUser.username,
-            is_edit: document.getElementById('is-edit-mode').value,
-            item_code: document.getElementById('it-code').value, 
-            item_name: document.getElementById('it-name').value, 
-            item_spec: document.getElementById('it-spec').value, 
-            category: document.getElementById('it-cat').value, 
-            uom: document.getElementById('it-uom').value, 
-            stock: document.getElementById('it-stock').value 
+            action: 'saveItem', role: currentUser.role, department: currentUser.department, username: currentUser.username,
+            is_edit: document.getElementById('is-edit-mode').value, item_code: document.getElementById('it-code').value, 
+            item_name: document.getElementById('it-name').value, item_spec: document.getElementById('it-spec').value, 
+            category: document.getElementById('it-cat').value, uom: document.getElementById('it-uom').value, stock: document.getElementById('it-stock').value 
         };
-        fetch('api/gis.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { if(res.success){ closeModal('modal-item'); loadData(); showCustomAlert("Success", "Item Saved."); } else showCustomAlert("Error", res.message); });
+        fetch('api/gis.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { 
+            if(res.code === 401) { logoutAction(); return; }
+            if(res.success){ closeModal('modal-item'); loadData(); showCustomAlert("Success", "Item Saved."); } else showCustomAlert("Error", res.message); 
+        });
     }
 
-    // --- BULK IMPORT/EXPORT INVENTORY (Admin Only) ---
     function downloadItemTemplate() {
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet([
             ["Item_Code", "Item_Name", "Item_Specification", "Category", "UoM", "Stock"],
-            ["ITM-001", "Bearing SKF 6205", "High Speed Bearing", "Sparepart", "Pcs", 50],
-            ["ITM-002", "O-Ring NBR", "ID 50mm x 3mm", "Consumable", "Pcs", 100]
+            ["ITM-001", "Bearing SKF 6205", "High Speed Bearing", "Sparepart", "Pcs", 50]
         ]);
         XLSX.utils.book_append_sheet(wb, ws, "Template_Items");
         XLSX.writeFile(wb, "Template_Master_Items.xlsx");
@@ -1308,9 +1284,7 @@
         if(inventoryData.length === 0) return showCustomAlert("Info", "No inventory data to export.");
         const wb = XLSX.utils.book_new();
         const rows = [["Item_Code", "Item_Name", "Item_Specification", "Category", "UoM", "Stock", "Last_Updated"]];
-        inventoryData.forEach(i => {
-            rows.push([i.item_code, i.item_name, i.item_spec, i.category, i.uom, parseInt(i.stock), i.last_updated]);
-        });
+        inventoryData.forEach(i => { rows.push([i.item_code, i.item_name, i.item_spec, i.category, i.uom, parseInt(i.stock), i.last_updated]); });
         const ws = XLSX.utils.aoa_to_sheet(rows);
         XLSX.utils.book_append_sheet(wb, ws, "Master_Items");
         XLSX.writeFile(wb, "GIS_Master_Items_" + new Date().getTime() + ".xlsx");
@@ -1325,14 +1299,10 @@
                 const data = new Uint8Array(evt.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
                 const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                
                 const formatted = json.map(r => ({
-                    item_code: String(r.Item_Code || r.item_code || ''),
-                    item_name: String(r.Item_Name || r.item_name || ''),
+                    item_code: String(r.Item_Code || r.item_code || ''), item_name: String(r.Item_Name || r.item_name || ''),
                     item_spec: String(r.Item_Specification || r.item_specification || r.item_spec || ''),
-                    category: String(r.Category || r.category || 'General'),
-                    uom: String(r.UoM || r.uom || 'Pcs'),
-                    stock: parseInt(r.Stock || r.stock || 0)
+                    category: String(r.Category || r.category || 'General'), uom: String(r.UoM || r.uom || 'Pcs'), stock: parseInt(r.Stock || r.stock || 0)
                 })).filter(r => r.item_code && r.item_name);
 
                 if(formatted.length === 0) { document.getElementById('import-item-file').value = ''; return showCustomAlert("Error", "Format tidak valid atau data kosong."); }
@@ -1340,15 +1310,14 @@
                 fetch('api/gis.php', { method: 'POST', body: JSON.stringify({ action: 'importItems', role: currentUser.role, data: formatted }) })
                 .then(r=>r.json()).then(res => {
                     document.getElementById('import-item-file').value = '';
-                    if(res.success) { showCustomAlert("Success", res.message); loadData(); } 
-                    else { showCustomAlert("Error", res.message); }
+                    if(res.code === 401) { logoutAction(); return; }
+                    if(res.success) { showCustomAlert("Success", res.message); loadData(); } else { showCustomAlert("Error", res.message); }
                 });
             } catch(err) { document.getElementById('import-item-file').value = ''; showCustomAlert("Error", "Gagal parsing file Excel."); }
         };
         reader.readAsArrayBuffer(file);
     }
 
-    // --- GOOD ISSUE (GI) ---
     function filterGI() { applyGiFilters(); }
     
     function setGiFilter(status) {
@@ -1370,8 +1339,6 @@
 
     function applyGiFilters() {
         const term = document.getElementById('search-gi').value.toLowerCase();
-        
-        // SAFE FALLBACK: Pastikan string tidak null dengan (r.kolom || '')
         let filtered = giData.filter(r => 
             (r.req_id || '').toLowerCase().includes(term) || 
             (r.fullname || '').toLowerCase().includes(term) || 
@@ -1385,14 +1352,12 @@
         } else if (activeGiFilter !== 'All') {
             filtered = filtered.filter(r => r.status === activeGiFilter);
         }
-        
         renderGI(filtered);
     }
 
     function renderGI(data) {
         const tb = document.getElementById('gi-table-body'); 
         const cardContainer = document.getElementById('gi-card-container');
-        
         const formatDt = (dtStr) => {
             if(!dtStr || dtStr === '0000-00-00 00:00:00' || dtStr === '-') return '-';
             const d = new Date(dtStr);
@@ -1429,7 +1394,6 @@
             if(r.status==='Cancelled') sColor='bg-slate-200 text-slate-600 border-slate-300';
             if(r.status==='Pending Receive') sColor='bg-blue-100 text-blue-800 border-blue-200 animate-pulse';
             
-            // PROTEKSI SAFE FALLBACK STRING NULL
             let appHeadStr = r.app_head || 'Pending';
             let appWhStr = r.app_wh || 'Pending';
 
@@ -1458,7 +1422,6 @@
             const whTime = formatDt(r.wh_time);
             const rcTime = formatDt(r.receive_time);
 
-            // Desktop Status Column
             const statusHTMLTable = `
                 <div class="flex flex-col items-center w-[180px] mx-auto">
                     <span class="status-badge border shadow-sm ${sColor} mb-3 w-full text-center py-2 px-2 leading-snug flex items-center justify-center min-h-[36px]">${transStatus}</span>
@@ -1520,8 +1483,8 @@
                         <span class="text-xs font-black text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg shadow-inner border border-slate-200 whitespace-nowrap ml-2">${i.qty} <span class="text-[9px] font-bold text-slate-500">${i.uom}</span></span>
                     </div>
                     <div class="flex gap-2 text-[9px] text-slate-500 uppercase mt-1">
-                        <div class="bg-slate-50 px-2.5 py-1.5 rounded-md shadow-sm border border-slate-100 flex-1 flex items-center justify-between"><span class="opacity-70">RC</span> <span class="font-bold text-slate-700">${i.reason_code || '-'}</span></div>
-                        <div class="bg-slate-50 px-2.5 py-1.5 rounded-md shadow-sm border border-slate-100 flex-1 flex items-center justify-between"><span class="opacity-70">CC</span> <span class="font-bold text-slate-700">${i.cost_center || '-'}</span></div>
+                        <div class="bg-slate-50 px-2.5 py-1.5 rounded-md shadow-sm border border-slate-100 flex-1 flex items-center justify-between" title="Reason Code"><span class="opacity-70">RC</span> <span class="font-bold text-slate-700">${i.reason_code || '-'}</span></div>
+                        <div class="bg-slate-50 px-2.5 py-1.5 rounded-md shadow-sm border border-slate-100 flex-1 flex items-center justify-between" title="Cost Center"><span class="opacity-70">CC</span> <span class="font-bold text-slate-700">${i.cost_center || '-'}</span></div>
                     </div>
                 </div>`;
                 itemsHtmlTable += itemBlock;
@@ -1605,7 +1568,6 @@
         cardContainer.innerHTML = htmlArrayCard.join('');
     }
 
-    // --- PHOTO MODAL LOGIC (CAMERA & UPLOAD) ---
     function openActionPhotoModal(id, actType) {
         document.getElementById('action-photo-id').value = id;
         document.getElementById('action-photo-type').value = actType;
@@ -1754,6 +1716,7 @@
             const res = await response.json();
 
             btn.disabled = false; btn.innerHTML = orgHtml;
+            if(res.code === 401) { logoutAction(); return; }
             if(res.success) {
                 closeModal('modal-action-photo');
                 loadData();
@@ -1767,7 +1730,6 @@
             showCustomAlert("Error", "Gagal memproses foto atau jaringan bermasalah.");
         }
     }
-
 
     function openGiModal() {
         document.getElementById('gi-action-type').value = 'submit';
@@ -1816,6 +1778,9 @@
             if(invItem) {
                 row.querySelector('.gi-qty').max = invItem.stock;
                 row.querySelector('.gi-qty').title = "Max stock: " + invItem.stock;
+                row.querySelector('.gi-stock').value = invItem.stock;
+            } else {
+                row.querySelector('.gi-stock').value = 0;
             }
         });
         
@@ -1835,7 +1800,7 @@
         d.id = `gi-row-${giRowCount}`;
         
         d.innerHTML = `
-            <button type="button" onclick="document.getElementById('${d.id}').remove()" class="absolute -top-2.5 -right-2.5 bg-red-100 text-red-600 rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-500 hover:text-white transition shadow-md btn-animated"><i class="fas fa-times text-[10px]"></i></button>
+            <button type="button" onclick="document.getElementById('${d.id}').remove()" class="absolute -top-2.5 -right-2.5 bg-red-100 text-red-600 rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-500 hover:text-white transition shadow-md btn-animated z-10"><i class="fas fa-times text-[10px]"></i></button>
             <div class="sm:col-span-4">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Item</label>
                 <div class="relative w-full">
@@ -1847,19 +1812,23 @@
                 </div>
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Req Qty</label>
-                <input type="number" class="w-full border border-slate-300 rounded-xl p-3 text-xs text-center gi-qty focus:ring-2 focus:ring-indigo-500 outline-none font-black text-slate-700 transition" placeholder="Qty" required>
+                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5" data-i18n="curr_stk_short">Curr. Stock</label>
+                <input type="text" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-center gi-stock text-slate-500 font-bold" placeholder="0" readonly tabindex="-1">
             </div>
             <div class="sm:col-span-2">
+                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5" data-i18n="req_qty">Req Qty</label>
+                <input type="number" class="w-full border border-slate-300 rounded-xl p-3 text-xs text-center gi-qty focus:ring-2 focus:ring-indigo-500 outline-none font-black text-slate-700 transition" placeholder="Qty" required>
+            </div>
+            <div class="sm:col-span-1">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">UoM</label>
                 <input type="text" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-center gi-uom text-slate-500 font-bold" placeholder="UoM" readonly tabindex="-1">
             </div>
-            <div class="sm:col-span-2">
+            <div class="sm:col-span-1">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Reason Code</label>
                 <input type="text" class="w-full border border-slate-300 rounded-xl p-3 text-xs text-center gi-reason focus:ring-2 focus:ring-indigo-500 outline-none font-medium transition" placeholder="Code">
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5 text-rose-500">Cost Center *</label>
+                <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5 text-rose-500" data-i18n="cost_ctr">Cost Center *</label>
                 <input type="text" class="w-full border border-slate-300 rounded-xl p-3 text-xs text-center gi-cost focus:ring-2 focus:ring-indigo-500 outline-none font-medium transition" placeholder="Cost Ctr" required>
             </div>
         `;
@@ -1920,19 +1889,16 @@
 
         fetch('api/gis.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { 
             btn.disabled = false; btn.innerHTML = orgTxt;
+            if(res.code === 401) { logoutAction(); return; }
             if(res.success){ closeModal('modal-gi'); loadData(); showCustomAlert("Success", res.message); } else { showCustomAlert("Error", res.message); } 
         }).catch(e => { btn.disabled = false; btn.innerHTML = orgTxt; showCustomAlert("Error", t('err_conn')); });
     }
 
     function cancelGI(reqId) {
         showCustomConfirm("Cancel Request", "Anda yakin ingin membatalkan permintaan ini?", () => {
-            const p = {
-                action: 'cancelRequest',
-                reqId: reqId,
-                username: currentUser.username,
-                fullname: currentUser.fullname
-            };
+            const p = { action: 'cancelRequest', reqId: reqId, username: currentUser.username, fullname: currentUser.fullname };
             fetch('api/gis.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { 
+                if(res.code === 401) { logoutAction(); return; }
                 if(res.success) { loadData(); showCustomAlert("Success", res.message); } 
                 else showCustomAlert("Error", res.message); 
             }).catch(e => showCustomAlert("Error", t('err_conn')));
@@ -1942,10 +1908,16 @@
     function updateGI(id, act, reason='') {
         if(act==='approve') {
             showCustomConfirm("Approve Request", "Approve request ini?", () => {
-                fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'updateStatus', reqId:id, act:act, role:currentUser.role, fullname:currentUser.fullname, reason:reason})}).then(r=>r.json()).then(res => { if(res.success) loadData(); else showCustomAlert("Error", res.message); });
+                fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'updateStatus', reqId:id, act:act, role:currentUser.role, fullname:currentUser.fullname, reason:reason})}).then(r=>r.json()).then(res => { 
+                    if(res.code === 401) { logoutAction(); return; }
+                    if(res.success) loadData(); else showCustomAlert("Error", res.message); 
+                });
             });
         } else {
-            fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'updateStatus', reqId:id, act:act, role:currentUser.role, fullname:currentUser.fullname, reason:reason})}).then(r=>r.json()).then(res => { if(res.success) loadData(); else showCustomAlert("Error", res.message); });
+            fetch('api/gis.php', {method:'POST', body:JSON.stringify({action:'updateStatus', reqId:id, act:act, role:currentUser.role, fullname:currentUser.fullname, reason:reason})}).then(r=>r.json()).then(res => { 
+                if(res.code === 401) { logoutAction(); return; }
+                if(res.success) loadData(); else showCustomAlert("Error", res.message); 
+            });
         }
     }
 
@@ -1955,15 +1927,24 @@
     // --- GOOD RECEIVE (GR) ---
     function filterGR() {
         const term = document.getElementById('search-gr').value.toLowerCase();
-        const filtered = grData.filter(r => r.gr_id.toLowerCase().includes(term) || r.fullname.toLowerCase().includes(term) || r.remarks.toLowerCase().includes(term));
+        const filtered = grData.filter(r => 
+            (r.gr_id || '').toLowerCase().includes(term) || 
+            (r.fullname || '').toLowerCase().includes(term) || 
+            (r.remarks || '').toLowerCase().includes(term)
+        );
         renderGR(filtered);
     }
 
     function renderGR(data = grData) {
         const tb = document.getElementById('gr-table-body');
         const cardContainer = document.getElementById('gr-card-container');
-        tb.innerHTML = '';
-        cardContainer.innerHTML = '';
+        
+        const formatDt = (dtStr) => {
+            if(!dtStr || dtStr === '0000-00-00 00:00:00' || dtStr === '-') return '-';
+            const d = new Date(dtStr);
+            if(isNaN(d)) return dtStr;
+            return d.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) + ' ' + d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+        };
 
         if(!data || data.length === 0) { 
             tb.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-slate-400 text-xs italic">${t('no_data')}</td></tr>`; 
@@ -1978,10 +1959,11 @@
             let itemsHtmlTable = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">';
             let itemsHtmlCard = '<div class="flex flex-col gap-2 mt-2">';
             
-            r.items.forEach(i => {
+            let itemsArr = r.items || [];
+            itemsArr.forEach(i => {
                 const itemBlock = `
                 <div class="bg-teal-50 p-2.5 rounded-lg border border-teal-100 flex justify-between items-center shadow-sm">
-                    <span class="text-[10px] font-bold text-teal-800 pr-2" title="${i.name}">${i.code} - ${i.name}</span>
+                    <span class="text-[10px] font-bold text-teal-800 pr-2 leading-tight" title="${i.name}">${i.code} - ${i.name}</span>
                     <span class="text-xs font-black text-teal-900 bg-white px-2 py-0.5 rounded shadow-sm border border-teal-50 whitespace-nowrap">+${i.qty} <span class="text-[9px] font-normal text-slate-500">${i.uom}</span></span>
                 </div>`;
                 itemsHtmlTable += itemBlock;
@@ -1990,21 +1972,19 @@
             itemsHtmlTable += '</div>';
             itemsHtmlCard += '</div>';
 
-            // Desktop Table Row
             htmlArrayTable.push(`<tr class="border-b border-slate-100 hover:bg-slate-50 align-top transition-colors">
-                <td class="px-6 py-4"><div class="font-bold text-xs text-teal-700">${r.gr_id}</div><div class="text-[9px] text-slate-400 font-mono mt-0.5">${r.created_at}</div></td>
+                <td class="px-6 py-4"><div class="font-bold text-xs text-teal-700">${r.gr_id}</div><div class="text-[9px] text-slate-400 font-mono mt-0.5">${formatDt(r.created_at)}</div></td>
                 <td class="px-6 py-4"><div class="font-bold text-xs text-slate-700">${r.fullname}</div><div class="text-[10px] text-slate-500">Warehouse Admin</div></td>
                 <td class="px-6 py-4 text-xs text-slate-600 font-medium italic"><div class="bg-slate-50 p-2 rounded-lg border border-slate-100">"${r.remarks}"</div></td>
                 <td class="px-6 py-4 min-w-[300px] whitespace-normal">${itemsHtmlTable}</td>
             </tr>`);
 
-            // Mobile Card
             htmlArrayCard.push(`
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-1 transition-all hover:shadow-md">
                 <div class="flex justify-between items-start mb-3 border-b border-slate-100 pb-3">
                     <div>
                         <div class="font-black text-sm text-teal-700 mb-0.5">${r.gr_id}</div>
-                        <div class="text-[10px] text-slate-400 font-mono">${r.created_at}</div>
+                        <div class="text-[10px] text-slate-400 font-mono">${formatDt(r.created_at)}</div>
                     </div>
                     <div class="text-right">
                         <div class="font-bold text-xs text-slate-800">${r.fullname}</div>
@@ -2042,11 +2022,11 @@
         d.id = `gr-row-${grRowCount}`;
         
         d.innerHTML = `
-            <button type="button" onclick="document.getElementById('${d.id}').remove()" class="absolute -top-2.5 -right-2.5 bg-red-100 text-red-600 rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-500 hover:text-white transition shadow-md btn-animated"><i class="fas fa-times text-[10px]"></i></button>
+            <button type="button" onclick="document.getElementById('${d.id}').remove()" class="absolute -top-2.5 -right-2.5 bg-red-100 text-red-600 rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-500 hover:text-white transition shadow-md btn-animated z-10"><i class="fas fa-times text-[10px]"></i></button>
             <div class="sm:col-span-6">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Item</label>
                 <div class="relative w-full">
-                    <input type="text" class="w-full border border-slate-300 rounded-lg p-2 text-xs gr-item-display focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer bg-slate-50 font-medium transition" placeholder="${t('ph_search_item')}" onfocus="showDropdown(this, 'gr')" onkeyup="filterDropdown(this, 'gr')" autocomplete="off" required>
+                    <input type="text" class="w-full border border-slate-300 rounded-xl p-3 text-xs gr-item-display focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer bg-slate-50 font-medium transition" placeholder="${t('ph_search_item')}" onfocus="showDropdown(this, 'gr')" onkeyup="filterDropdown(this, 'gr')" autocomplete="off" required>
                     <input type="hidden" class="gr-item-code">
                     <input type="hidden" class="gr-item-name">
                     <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 pointer-events-none text-[12px]"></i>
@@ -2055,11 +2035,11 @@
             </div>
             <div class="sm:col-span-3">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">Qty Masuk</label>
-                <input type="number" class="w-full border border-slate-300 rounded-lg p-2 text-xs text-center gr-qty focus:ring-2 focus:ring-teal-500 outline-none font-black text-slate-700 transition" placeholder="Qty Masuk" required min="1">
+                <input type="number" class="w-full border border-slate-300 rounded-xl p-3 text-xs text-center gr-qty focus:ring-2 focus:ring-teal-500 outline-none font-black text-slate-700 transition" placeholder="Qty Masuk" required min="1">
             </div>
             <div class="sm:col-span-3">
                 <label class="block text-[9px] font-bold text-slate-400 uppercase sm:hidden mb-1.5">UoM</label>
-                <input type="text" class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-xs text-center gr-uom text-slate-500 font-bold" placeholder="UoM" readonly tabindex="-1">
+                <input type="text" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-center gr-uom text-slate-500 font-bold" placeholder="UoM" readonly tabindex="-1">
             </div>
         `;
         document.getElementById('gr-items-container').appendChild(d);
@@ -2093,6 +2073,7 @@
             const p = { action: 'submitGR', role: currentUser.role, department: currentUser.department, username: currentUser.username, fullname: currentUser.fullname, remarks: remarks, items: items };
             fetch('api/gis.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { 
                 btn.disabled = false; btn.innerHTML = orgTxt;
+                if(res.code === 401) { logoutAction(); return; }
                 if(res.success){ closeModal('modal-gr'); loadData(); showCustomAlert("Success", res.message); } 
                 else { showCustomAlert("Error", res.message); } 
             }).catch(e => { btn.disabled = false; btn.innerHTML = orgTxt; showCustomAlert("Error", t('err_conn')); });
@@ -2101,12 +2082,12 @@
 
     // --- USERS MANAGEMENT (Admin Only) ---
     function openManageUsers() { openModal('modal-users'); loadUsers(); }
-    function loadUsers() { fetch('api/users.php', {method:'POST', body:JSON.stringify({action:'getAllUsers'})}).then(r=>r.json()).then(d => { allUsers = d; renderUsers(d); }); }
+    function loadUsers() { fetch('api/users.php', {method:'POST', body:JSON.stringify({action:'getAllUsers'})}).then(r=>r.json()).then(d => { if(d.code===401){logoutAction(); return;} allUsers = d; renderUsers(d); }); }
     function renderUsers(data) {
         const c = document.getElementById('user-list'); c.innerHTML = '';
         let htmlArray = [];
         data.forEach(u => {
-            htmlArray.push(`<div onclick="editUser('${u.username}')" class="p-3 border border-slate-100 rounded-lg hover:bg-indigo-50 hover:border-indigo-200 cursor-pointer text-xs mb-2 transition shadow-sm bg-white"><div class="font-bold text-slate-700">${u.fullname}</div><div class="text-[10px] text-slate-500 mt-1.5">${u.username} • <span class="bg-slate-100 px-1.5 py-0.5 rounded font-bold">${u.role}</span></div></div>`);
+            htmlArray.push(`<div onclick="editUser('${u.username}')" class="p-3 border border-slate-100 rounded-xl hover:bg-indigo-50 hover:border-indigo-200 cursor-pointer text-xs mb-2 transition shadow-sm bg-white"><div class="font-bold text-slate-700">${u.fullname}</div><div class="text-[10px] text-slate-500 mt-1.5">${u.username} • <span class="bg-slate-100 px-1.5 py-0.5 rounded font-bold">${u.role}</span></div></div>`);
         });
         c.innerHTML = htmlArray.join('');
     }
@@ -2178,7 +2159,10 @@
                 access_rights: JSON.stringify(acc)
             } 
         };
-        fetch('api/users.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { if(res.success){ resetUserForm(); loadUsers(); showCustomAlert("Success", "Berhasil simpan user."); } else showCustomAlert("Error", res.message); });
+        fetch('api/users.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { 
+            if(res.code === 401) { logoutAction(); return; }
+            if(res.success){ resetUserForm(); loadUsers(); showCustomAlert("Success", "Berhasil simpan user."); } else showCustomAlert("Error", res.message); 
+        });
     }
     
     function deleteUser() { showCustomConfirm("Delete User", "Hapus user ini?", () => { fetch('api/users.php', {method:'POST', body:JSON.stringify({action:'deleteUser', username:document.getElementById('u-user').value})}).then(r=>r.json()).then(res => { if(res.success){ resetUserForm(); loadUsers(); } }); }); }

@@ -1,25 +1,33 @@
 <?php
+session_start();
 require 'db.php';
 require 'helper.php';
+
+header("X-Frame-Options: DENY");
+header("X-Content-Type-Options: nosniff");
+
+// SECURITY CHECK: PASTIKAN YANG MENGAKSES API ADALAH USER VALID
+if(!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true) {
+    sendJson(['success' => false, 'message' => 'Unauthorized Access', 'code' => 401]);
+}
 
 $input = json_decode(file_get_contents('php://input'), true);
 $action = $input['action'] ?? '';
 
-if ($action == 'getAllUsers') {
-    $res = $conn->query("SELECT id, username, fullname, nik, department, role, phone, access_rights FROM users ORDER BY fullname ASC");
-    sendJson($res->fetch_all(MYSQLI_ASSOC));
-}
+// SECURITY CHECK: HANYA ADMIN YANG BOLEH KELOLA USER LAIN
+$isAdmin = ($_SESSION['user_data']['role'] === 'Administrator');
 
-if ($action == 'getOptions') {
-    $deptRes = $conn->query("SELECT DISTINCT department FROM users WHERE department != '' ORDER BY department");
-    $roleRes = $conn->query("SELECT DISTINCT role FROM users WHERE role != '' ORDER BY role");
-    $depts = []; $roles = [];
-    while($r = $deptRes->fetch_assoc()) $depts[] = $r['department'];
-    while($r = $roleRes->fetch_assoc()) $roles[] = $r['role'];
-    sendJson(['departments' => $depts, 'roles' => $roles]);
+if ($action == 'getAllUsers') {
+    if(!$isAdmin) sendJson(['success'=>false, 'message'=>'Access Denied', 'code'=>403]);
+    $res = $conn->query("SELECT id, username, fullname, nik, department, role, phone, access_rights FROM users ORDER BY fullname ASC");
+    $data = [];
+    if($res) { while($row = $res->fetch_assoc()) { $data[] = $row; } }
+    sendJson($data);
 }
 
 if ($action == 'saveUser') {
+    if(!$isAdmin) sendJson(['success'=>false, 'message'=>'Access Denied', 'code'=>403]);
+    
     $isEdit = $input['isEdit']; $data = $input['data'];
     $u = $conn->real_escape_string($data['username']); $f = $conn->real_escape_string($data['fullname']);
     $n = $conn->real_escape_string($data['nik']); $d = $conn->real_escape_string($data['department']);
@@ -41,17 +49,30 @@ if ($action == 'saveUser') {
 }
 
 if ($action == 'updateProfile') {
-    $username = $input['username'];
+    // SECURITY: Hanya boleh mengubah profil miliknya sendiri berdasarkan SESSION SERVER
+    $sessionUsername = $_SESSION['user_data']['username'];
+    $reqUsername = $input['username'];
+    
+    if ($sessionUsername !== $reqUsername && !$isAdmin) {
+        sendJson(['success'=>false, 'message'=>'Anda tidak berhak merubah profil orang lain!', 'code'=>403]);
+    }
+    
     $phone = $conn->real_escape_string($input['phone']);
     $newPass = $input['newPass'] ?? '';
     $sql = "UPDATE users SET phone = '$phone'";
     if (!empty($newPass)) { $sql .= ", password = '".password_hash($newPass, PASSWORD_DEFAULT)."'"; }
-    $sql .= " WHERE username = '$username'";
-    if ($conn->query($sql)) sendJson(['success' => true, 'message' => 'Profile updated successfully']);
-    else sendJson(['success' => false, 'message' => 'Update failed: ' . $conn->error]);
+    $sql .= " WHERE username = '$reqUsername'";
+    
+    if ($conn->query($sql)) {
+        if($sessionUsername === $reqUsername) { $_SESSION['user_data']['phone'] = $phone; }
+        sendJson(['success' => true, 'message' => 'Profile updated successfully']);
+    } else {
+        sendJson(['success' => false, 'message' => 'Update failed: ' . $conn->error]);
+    }
 }
 
 if ($action == 'deleteUser') {
+    if(!$isAdmin) sendJson(['success'=>false, 'message'=>'Access Denied', 'code'=>403]);
     $u = $conn->real_escape_string($input['username']);
     if (strtolower($u) == 'admin') sendJson(['success' => false, 'message' => 'Cannot delete Admin.']);
     if ($conn->query("DELETE FROM users WHERE username = '$u'")) sendJson(['success' => true, 'message' => 'User deleted.']);
