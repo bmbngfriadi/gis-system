@@ -1,7 +1,26 @@
 <?php include 'includes/header.php'; ?>
 
 <div id="view-inv" class="space-y-6 animate-slide-up">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+
+    <div id="inv-insights" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2 hidden">
+        <div class="group bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden shine-effect flex flex-col justify-center transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl hover:scale-[1.02] cursor-default">
+            <div class="text-[10px] uppercase font-bold opacity-80 mb-1 transition-opacity duration-300 group-hover:opacity-100" data-translate="true">Total Asset Value</div>
+            <div class="text-2xl font-black truncate" id="inv-stat-value">Rp 0</div>
+            <i class="fas fa-coins absolute -right-3 -bottom-4 text-7xl opacity-20 transition-transform duration-500 ease-in-out group-hover:scale-125 group-hover:-rotate-12"></i>
+        </div>
+        <div class="group bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden shine-effect flex flex-col justify-center transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl hover:scale-[1.02] cursor-default">
+            <div class="text-[10px] uppercase font-bold opacity-80 mb-1 transition-opacity duration-300 group-hover:opacity-100" data-translate="true">Total Master Items</div>
+            <div class="text-2xl font-black truncate" id="inv-stat-items">0 Items</div>
+            <i class="fas fa-boxes absolute -right-3 -bottom-4 text-7xl opacity-20 transition-transform duration-500 ease-in-out group-hover:scale-125 group-hover:rotate-12"></i>
+        </div>
+        <div class="group bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden shine-effect flex flex-col justify-center transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl hover:scale-[1.02] cursor-default">
+            <div class="text-[10px] uppercase font-bold opacity-80 mb-1 transition-opacity duration-300 group-hover:opacity-100" data-translate="true">Low Stock Alert (<10)</div>
+            <div class="text-2xl font-black truncate animate-pulse group-hover:animate-none" id="inv-stat-low">0 Items</div>
+            <i class="fas fa-exclamation-triangle absolute -right-3 -bottom-4 text-7xl opacity-20 transition-transform duration-500 ease-in-out group-hover:scale-125 group-hover:rotate-12"></i>
+        </div>
+    </div>
+
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4">
         <div>
             <h2 class="text-lg font-bold text-slate-700" data-translate="true" data-i18n="mast_inv">Master Inventory</h2>
             <p class="text-xs text-slate-500" data-translate="true" data-i18n="desc_inv">Manage warehouse items and stock.</p>
@@ -40,7 +59,7 @@
                         <th class="px-6 py-4 text-center" data-translate="true" data-i18n="th_it_stock">Stock / UoM</th>
                         <th class="px-6 py-4 text-right" data-translate="true" data-i18n="th_price">Harga</th>
                         
-                        <?php if($isAdmin || in_array('item_edit', $rights) || in_array('stock_edit', $rights)): ?>
+                        <?php if($isAdmin || in_array('item_edit', $rights) || in_array('stock_edit', $rights) || in_array('item_delete', $rights)): ?>
                         <th class="px-6 py-4 text-right" id="th-inv-act" data-translate="true" data-i18n="th_act">Action</th>
                         <?php endif; ?>
                     </tr>
@@ -104,8 +123,23 @@
         const tb = document.getElementById('inv-table-body'); 
         const cardContainer = document.getElementById('inv-card-container');
         
-        const canEditInfo = currentUser.role === 'Administrator' || (currentUser.access_rights && currentUser.access_rights.includes('item_edit'));
-        const canEditStock = currentUser.role === 'Administrator' || (currentUser.access_rights && currentUser.access_rights.includes('stock_edit'));
+        // Render Insight Cards
+        let totalVal = 0; let lowStock = 0;
+        data.forEach(i => {
+            totalVal += (parseFloat(i.price || 0) * parseInt(i.stock || 0));
+            if(parseInt(i.stock || 0) < 10) lowStock++;
+        });
+
+        document.getElementById('inv-insights').classList.remove('hidden');
+        document.getElementById('inv-stat-items').innerText = data.length + " Items";
+        document.getElementById('inv-stat-low').innerText = lowStock + " Items";
+        document.getElementById('inv-stat-value').innerText = 'Rp ' + totalVal.toLocaleString('id-ID');
+
+        const accRights = currentUser.access_rights ? JSON.parse(currentUser.access_rights) : [];
+        const isAppAdmin = currentUser.role === 'Administrator';
+        const canEditInfo = isAppAdmin || accRights.includes('item_edit');
+        const canEditStock = isAppAdmin || accRights.includes('stock_edit');
+        const canDelete = isAppAdmin || accRights.includes('item_delete');
         const canEditAny = canEditInfo || canEditStock;
 
         if (!data || data.length === 0) {
@@ -118,21 +152,38 @@
         let htmlArrayTable = []; let htmlArrayCard = [];
 
         displayData.forEach(r => {
-            // Harga selalu ditampilkan untuk semua orang
             let priceHtmlTable = `<td class="px-6 py-4 text-right font-bold text-emerald-700">Rp ${parseFloat(r.price||0).toLocaleString('id-ID')}</td>`;
             let priceHtmlCard = `<div class="text-right mb-4 bg-emerald-50 p-2.5 rounded-xl border border-emerald-100"><span class="text-[9px] text-emerald-600 font-bold uppercase tracking-wider block mb-0.5">Harga</span><span class="font-black text-emerald-800 text-sm">Rp ${parseFloat(r.price||0).toLocaleString('id-ID')}</span></div>`;
 
-            let actTable = canEditAny ? `<td class="px-6 py-4 text-right"><button onclick="openEditItem('${(r.item_code||'').replace(/'/g, "\\'")}','${(r.item_name||'').replace(/'/g, "\\'")}','${(r.item_spec||'').replace(/'/g, "\\'")}','${(r.category||'').replace(/'/g, "\\'")}','${(r.uom||'').replace(/'/g, "\\'")}','${r.stock}','${r.price}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 p-2 rounded-lg shadow-sm transition btn-animated"><i class="fas fa-edit"></i></button></td>` : `<td class="px-6 py-4 text-right"></td>`;
+            let actionButtons = "";
+            if (canEditAny) {
+                actionButtons += `<button onclick="openEditItem('${(r.item_code||'').replace(/'/g, "\\'")}','${(r.item_name||'').replace(/'/g, "\\'")}','${(r.item_spec||'').replace(/'/g, "\\'")}','${(r.category||'').replace(/'/g, "\\'")}','${(r.uom||'').replace(/'/g, "\\'")}','${r.stock}','${r.price}')" class="text-blue-600 hover:text-blue-800 bg-blue-50 p-2 rounded-lg shadow-sm transition btn-animated"><i class="fas fa-edit"></i></button>`;
+            }
+            if (canDelete) {
+                actionButtons += `<button onclick="deleteMasterItem('${(r.item_code||'').replace(/'/g, "\\'")}')" class="text-red-500 hover:text-white hover:bg-red-600 bg-red-50 p-2 ml-2 rounded-lg shadow-sm transition btn-animated"><i class="fas fa-trash"></i></button>`;
+            }
+
+            let actTable = (canEditAny || canDelete) ? `<td class="px-6 py-4 text-right whitespace-nowrap">${actionButtons}</td>` : `<td class="px-6 py-4 text-right hidden" id="th-inv-act"></td>`;
             
             htmlArrayTable.push(`<tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors duration-200"><td class="px-6 py-4 font-mono text-xs font-bold text-indigo-600">${r.item_code}</td><td class="px-6 py-4"><div class="font-bold text-slate-700">${r.item_name}</div><div class="text-[10px] text-slate-500 italic mt-0.5">${r.item_spec || '-'}</div></td><td class="px-6 py-4 text-xs text-slate-500"><span class="bg-slate-100 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border border-slate-200">${r.category}</span></td><td class="px-6 py-4 text-center"><span class="bg-indigo-50 text-indigo-700 font-black px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm">${r.stock} <span class="font-normal text-[10px] ml-1">${r.uom}</span></span></td>${priceHtmlTable}${actTable}</tr>`);
 
-            let actCard = canEditAny ? `<button onclick="openEditItem('${(r.item_code||'').replace(/'/g, "\\'")}','${(r.item_name||'').replace(/'/g, "\\'")}','${(r.item_spec||'').replace(/'/g, "\\'")}','${(r.category||'').replace(/'/g, "\\'")}','${(r.uom||'').replace(/'/g, "\\'")}','${r.stock}','${r.price}')" class="text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-50 p-2.5 rounded-xl shadow-sm transition btn-animated"><i class="fas fa-edit"></i></button>` : ``;
-            htmlArrayCard.push(`<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-1 transition-all hover:shadow-md"><div class="flex justify-between items-start mb-3"><div class="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">${r.item_code}</div><span class="bg-slate-100 px-2 py-1 rounded-md text-[9px] font-bold uppercase border border-slate-200 text-slate-600">${r.category}</span></div><div class="mb-4"><div class="font-bold text-sm text-slate-800">${r.item_name}</div><div class="text-xs text-slate-500 italic mt-1 leading-snug">${r.item_spec || '-'}</div></div>${priceHtmlCard}<div class="flex justify-between items-center border-t border-slate-100 pt-4"><div><span class="text-[9px] text-slate-400 uppercase font-bold block mb-1" data-translate="true">Current Stock</span><span class="bg-indigo-50 text-indigo-700 font-black px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm text-sm">${r.stock} <span class="font-normal text-[10px] ml-1">${r.uom}</span></span></div>${actCard}</div></div>`);
+            let actCard = (canEditAny || canDelete) ? `${actionButtons}` : ``;
+            htmlArrayCard.push(`<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-1 transition-all hover:shadow-md"><div class="flex justify-between items-start mb-3"><div class="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">${r.item_code}</div><span class="bg-slate-100 px-2 py-1 rounded-md text-[9px] font-bold uppercase border border-slate-200 text-slate-600">${r.category}</span></div><div class="mb-4"><div class="font-bold text-sm text-slate-800">${r.item_name}</div><div class="text-xs text-slate-500 italic mt-1 leading-snug">${r.item_spec || '-'}</div></div>${priceHtmlCard}<div class="flex justify-between items-center border-t border-slate-100 pt-4"><div><span class="text-[9px] text-slate-400 uppercase font-bold block mb-1" data-translate="true">Current Stock</span><span class="bg-indigo-50 text-indigo-700 font-black px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm text-sm">${r.stock} <span class="font-normal text-[10px] ml-1">${r.uom}</span></span></div><div>${actCard}</div></div></div>`);
         });
 
         if(data.length > 300) { htmlArrayTable.push(`<tr><td colspan="6" class="text-center py-4 text-slate-400 text-xs italic" data-translate="true">Menampilkan 300 data pertama.</td></tr>`); htmlArrayCard.push(`<div class="text-center py-4 text-slate-400 text-xs italic" data-translate="true">Menampilkan 300 data pertama.</div>`); }
 
         tb.innerHTML = htmlArrayTable.join(''); cardContainer.innerHTML = htmlArrayCard.join(''); AutoTranslator.processDOM();
+    }
+
+    // Helper Hak Akses
+    function canAddPriceHelper() {
+        const accRights = currentUser.access_rights ? JSON.parse(currentUser.access_rights) : [];
+        return currentUser.role === 'Administrator' || accRights.includes('price_add');
+    }
+    function canEditPriceHelper() {
+        const accRights = currentUser.access_rights ? JSON.parse(currentUser.access_rights) : [];
+        return currentUser.role === 'Administrator' || accRights.includes('price_edit');
     }
 
     function openItemModal() {
@@ -144,8 +195,8 @@
         document.getElementById('it-stock').value = ''; document.getElementById('it-stock').disabled = false;
         document.getElementById('it-price').value = ''; 
         
-        // Logika Read-Only Harga Berdasarkan Hak Akses
-        if(!canEditPriceHelper()) { 
+        // Cek Hak Akses Tambah Harga Baru (price_add)
+        if(!canAddPriceHelper()) { 
             document.getElementById('it-price').readOnly = true;
             document.getElementById('it-price').classList.add('bg-slate-100', 'cursor-not-allowed');
         } else { 
@@ -158,8 +209,10 @@
     }
 
     function openEditItem(c, n, spec, cat, u, s, p) {
-        const canEditInfo = currentUser.role === 'Administrator' || (currentUser.access_rights && currentUser.access_rights.includes('item_edit'));
-        const canEditStock = currentUser.role === 'Administrator' || (currentUser.access_rights && currentUser.access_rights.includes('stock_edit'));
+        const accRights = currentUser.access_rights ? JSON.parse(currentUser.access_rights) : [];
+        const isAppAdmin = currentUser.role === 'Administrator';
+        const canEditInfo = isAppAdmin || accRights.includes('item_edit');
+        const canEditStock = isAppAdmin || accRights.includes('stock_edit');
         
         document.getElementById('it-code').value = c; document.getElementById('it-code').disabled = true;
         document.getElementById('it-name').value = n; document.getElementById('it-name').disabled = !canEditInfo;
@@ -170,7 +223,7 @@
         
         document.getElementById('it-price').value = p || 0;
         
-        // Logika Read-Only Harga Berdasarkan Hak Akses
+        // Cek Hak Akses Edit Harga Exist (price_edit)
         if(!canEditPriceHelper()) { 
             document.getElementById('it-price').readOnly = true;
             document.getElementById('it-price').classList.add('bg-slate-100', 'cursor-not-allowed');
@@ -194,6 +247,17 @@
         fetch('api/gis.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { 
             if(res.code === 401) { logoutAction(); return; }
             if(res.success){ closeModal('modal-item'); loadData(); showCustomAlert("Success", "Item Saved."); } else showCustomAlert("Error", res.message); 
+        });
+    }
+
+    function deleteMasterItem(code) {
+        showCustomConfirm("Hapus Item", "Anda yakin ingin menghapus item " + code + "? Semua data stok terkait item ini akan hilang permanen.", () => {
+            fetch('api/gis.php', { method: 'POST', body: JSON.stringify({ action: 'deleteItem', item_code: code }) })
+            .then(r => r.json()).then(res => {
+                if(res.code === 401) { logoutAction(); return; }
+                if(res.success) { showCustomAlert("Success", res.message); loadData(); }
+                else { showCustomAlert("Error", res.message); }
+            }).catch(e => showCustomAlert("Error", t('err_conn')));
         });
     }
 

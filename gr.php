@@ -1,6 +1,15 @@
 <?php include 'includes/header.php'; ?>
 
 <div id="view-gr" class="space-y-6 animate-slide-up">
+
+    <div id="gr-insights" class="hidden bg-gradient-to-r from-teal-900 to-emerald-800 rounded-2xl shadow-md p-3 flex items-center text-white overflow-hidden relative">
+        <div class="font-black text-[10px] uppercase tracking-widest whitespace-nowrap pr-4 mr-2 border-r border-white/20 flex items-center gap-2 z-10">
+            <i class="fas fa-chart-line text-emerald-400 animate-pulse text-sm"></i> <span data-translate="true">Top Received</span>
+        </div>
+        <div class="scrolling-text-container text-xs font-medium opacity-90 cursor-default" id="gr-top-items" title="Hover to pause">
+            </div>
+    </div>
+
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h2 class="text-lg font-bold text-slate-700" data-translate="true" data-i18n="hist_gr">Good Receive History</h2>
@@ -66,7 +75,7 @@
                     <div id="gr-items-container" class="space-y-3"></div>
                     
                     <div class="flex justify-between items-center mt-4">
-                        <button type="button" onclick="addGrRow()" class="bg-teal-100 text-teal-700 font-bold text-xs px-4 py-2 rounded-xl shadow-sm hover:bg-teal-200 btn-animated"><i class="fas fa-plus"></i> <span data-translate="true" data-i18n="add_row">Add Item Row</span></button>
+                        <button type="button" onclick="addGrRow()" class="bg-teal-100 text-teal-700 font-bold text-xs px-4 py-2 rounded-xl shadow-sm hover:bg-teal-200 btn-animated"><i class="fas fa-plus mr-1"></i> <span data-translate="true" data-i18n="add_row">Add Item Row</span></button>
                         <div id="gr-grand-total" class="hidden text-right font-black text-lg text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 shadow-sm">Grand Total: Rp 0</div>
                     </div>
                     
@@ -110,6 +119,15 @@
 <?php include 'includes/footer.php'; ?>
 
 <script>
+    // ==========================================
+    // SETTINGAN KECEPATAN TEKS STATISTIK (MARQUEE)
+    // ==========================================
+    // Ubah angka di bawah ini untuk mengatur kecepatan (dalam detik).
+    // Semakin KECIL angkanya = Semakin CEPAT jalannya.
+    // Semakin BESAR angkanya = Semakin LAMBAT jalannya.
+    const SCROLL_SPEED_SECONDS = 70; 
+    // ==========================================
+
     let grData = [];
     let grRowCount = 0;
     let videoStreamGr = null, capturedGrBase64 = null, activeSourceGr = 'file';
@@ -142,6 +160,23 @@
         const cardContainer = document.getElementById('gr-card-container');
         const formatDt = (dtStr) => { if(!dtStr || dtStr === '0000-00-00 00:00:00' || dtStr === '-') return '-'; const d = new Date(dtStr); if(isNaN(d)) return dtStr; return d.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) + ' ' + d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}); };
         
+        let itemFreq = {};
+        data.forEach(r => {
+            (r.items || []).forEach(i => {
+                if(i.name) itemFreq[i.name] = (itemFreq[i.name] || 0) + parseInt(i.qty);
+            });
+        });
+
+        // Render Animasi Insight / Top Items dengan Settingan Kecepatan
+        let sortedItems = Object.entries(itemFreq).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        if(sortedItems.length > 0) {
+            let marqueeText = sortedItems.map((item, index) => `<span class="inline-block mx-4"><b>#${index+1}</b> ${item[0]} <span class="bg-white/20 px-2 py-0.5 rounded text-[10px] ml-1 text-emerald-200">+${item[1]} Rcvd</span></span>`).join(' <i class="fas fa-circle text-[5px] text-white/30 mx-2"></i> ');
+            document.getElementById('gr-insights').classList.remove('hidden');
+            document.getElementById('gr-top-items').innerHTML = `<div class="scrolling-text" style="animation-duration: ${SCROLL_SPEED_SECONDS}s;">${marqueeText}</div>`;
+        } else {
+            document.getElementById('gr-insights').classList.add('hidden');
+        }
+
         if(!data || data.length === 0) { tb.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-400 text-xs italic" data-translate="true" data-i18n="no_data">No data found.</td></tr>`; cardContainer.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs italic" data-translate="true" data-i18n="no_data">No data found.</div>`; AutoTranslator.processDOM(); return; }
 
         let htmlArrayTable = []; let htmlArrayCard = [];
@@ -188,7 +223,7 @@
         grRowCount = 0; addGrRow(); openModal('modal-gr'); AutoTranslator.processDOM();
     }
 
-    // Helper untuk mengecek hak akses EDIT HARGA
+    // Helper Cek Hak Akses Edit Harga
     function canEditPriceHelper() {
         const accRights = currentUser.access_rights ? JSON.parse(currentUser.access_rights) : [];
         const isAppAdmin = currentUser.role === 'Administrator';

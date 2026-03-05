@@ -134,7 +134,10 @@
                                 <label class="flex items-center gap-2.5 text-slate-700 font-medium cursor-pointer"><input type="checkbox" id="chk-item-edit" class="acc-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" value="item_edit"> <span data-translate="true">Edit Item Info</span></label>
                                 <label class="flex items-center gap-2.5 text-slate-700 font-medium cursor-pointer"><input type="checkbox" id="chk-stock-edit" class="acc-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" value="stock_edit"> <span data-translate="true">Edit/Adjust Stock</span></label>
                                 <label class="flex items-center gap-2.5 text-slate-700 font-medium cursor-pointer"><input type="checkbox" id="chk-export-data" class="acc-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" value="export_data"> <span data-translate="true">Export Data (PDF/Excel)</span></label>
-                                <label class="flex items-center gap-2.5 text-slate-700 font-medium cursor-pointer"><input type="checkbox" id="chk-edit-price" class="acc-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" value="edit_price"> <span data-translate="true" data-i18n="edit_price">Edit Price</span></label>
+                                
+                                <label class="flex items-center gap-2.5 text-slate-700 font-medium cursor-pointer"><input type="checkbox" id="chk-price-add" class="acc-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" value="price_add"> <span data-translate="true" data-i18n="price_add">Input Harga Baru</span></label>
+                                <label class="flex items-center gap-2.5 text-slate-700 font-medium cursor-pointer"><input type="checkbox" id="chk-price-edit" class="acc-chk w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" value="price_edit"> <span data-translate="true" data-i18n="price_edit">Edit Harga (Exist)</span></label>
+                                <label class="flex items-center gap-2.5 text-slate-700 font-medium cursor-pointer"><input type="checkbox" id="chk-item-delete" class="acc-chk w-4 h-4 text-red-500 rounded focus:ring-red-500" value="item_delete"> <span data-translate="true" class="text-red-600" data-i18n="item_delete">Hapus Item</span></label>
                             </div>
                         </div>
 
@@ -153,17 +156,46 @@
     const currentUser = <?= json_encode($currentUser) ?>;
     let inventoryData = [];
     let globalConfirmCallback = null;
-    let allUsers = []; // Variabel global untuk user management
+    let allUsers = []; 
     let currentLang = localStorage.getItem('portal_lang') || 'en';
+
+    // ==========================================
+    // AUTO LOGOUT (IDLE TIMEOUT) SECURITY
+    // ==========================================
+    const IDLE_TIMEOUT_MINUTES = 2; // Waktu idle sebelum auto-logout (dalam menit)
+    let idleTime = 0;
+    let idleInterval;
+
+    function resetIdleTimer() {
+        idleTime = 0;
+    }
+
+    function checkIdleTime() {
+        idleTime++;
+        if (idleTime >= IDLE_TIMEOUT_MINUTES) {
+            clearInterval(idleInterval);
+            logoutAction(); // Panggil fungsi logout jika sudah melampaui batas
+        }
+    }
+
+    // Cek idle setiap 1 menit
+    idleInterval = setInterval(checkIdleTime, 60000);
+
+    // Reset timer jika ada interaksi
+    ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'click'].forEach(evt => {
+        document.addEventListener(evt, resetIdleTimer, { capture: true, passive: true });
+    });
+    // ==========================================
+
 
     const i18n = {
         en: {
             app_desc: "Good Issue & Inventory System", forgot_pass: "Forgot Password?", login: "Login", tab_gi: "Good Issue (GI)", tab_gr: "Good Receive (GR)", tab_inv: "Inventory", stat_tot_gi: "Total Request", stat_pend: "Pending Approval", stat_comp: "Completed", stat_pend_head: "Pending Head", stat_pend_wh: "Pending WH", stat_pend_recv: "Pending Receive", hist_gi: "Good Issue History", click_filter_info: "Click statistics cards above to filter data.", ph_search_gi: "Search GI (ID/Name/Dept/Desc)...", btn_new_gi: "New GI Form", th_id: "NO GIF & Date", th_req: "Requestor Info", th_items: "Items & Activities Description", th_stat: "Status", th_act: "Action", hist_gr: "Good Receive History", desc_gr: "Log of incoming items to warehouse.", ph_search_gr: "Search GR (ID/Name/Supplier)...", btn_new_gr: "New GR Form", th_gr_id: "GR ID & Date", th_gr_by: "Received By", th_gr_rem: "Remarks / Supplier", th_gr_items: "Items Received", mast_inv: "Master Inventory", desc_inv: "Manage warehouse items and stock.", btn_add_item: "Add Item Master", th_it_code: "Item Code", th_it_name: "Item Name", th_it_spec: "Specification", th_it_cat: "Category", th_it_stock: "Stock / UoM", btn_ok: "OK", btn_cancel: "Cancel", btn_yes: "Yes, Proceed", reset_pass: "Reset Password", reset_info: "Reset link will be sent to your WhatsApp number.", btn_send_wa: "Send WhatsApp Link", my_profile: "My Profile", dept: "Department", fullname: "Fullname", wa_phone: "WhatsApp No.", editable: "(Editable)", new_pass: "New Password", pass_note: "(Leave blank if unchanged)", btn_update_prof: "Update Profile", form_gi: "Form Good Issue", req_dept: "Requestor / Dept", sec_req: "Section Requestor", ph_sec_req: "Ex: Maintenance / Production", act_desc: "Activities Description", ph_act_desc: "Explain activities or reason...", item_list: "Item List", add_row: "Add Item Row", curr_stk_short: "Curr. Stock", req_qty: "Requested Qty", rsn_code: "Reason Code", cost_ctr: "Cost Center *", btn_submit_form: "Submit Form", form_gr: "Form Good Receive (GR)", info_gr: "Input incoming items. Data will automatically update Master Inventory stock.", rem_supp: "Remarks / Supplier / PO Number", inc_items: "Incoming Items", qty_recv: "Qty Received", btn_save_stk: "Save & Update Stock", master_item: "Master Item", it_code: "Item No (Code)", it_name: "Item Name", it_spec: "Item Specification", cat: "Category", curr_stk: "Current Stock", btn_save_item: "Save Item", rej_req: "Reject Request", ph_rej: "Reason for rejection...", btn_conf_rej: "Confirm Reject", no_data: "No data found.", btn_appr: "Approve", btn_rej: "Reject", btn_iss: "Issue Items", err_conn: "Connection Error.", err_req: "Please fill all required fields.", ph_search_item: "Search Item...", ph_search_inv: "Search Item (Code/Name)...", btn_export_data: "Export Report", export_data_title: "Export Report", export_type: "Data Type", start_date: "Start Date", end_date: "End Date", btn_export_items: "Export", btn_import_items: "Import", btn_template: "Template", btn_confirm_recv: "Confirm Receive",
-            th_price: "Price", total_price: "Total Price", edit_price: "Edit Price", grand_total: "Grand Total"
+            th_price: "Price", total_price: "Total Price", price_add: "Add New Price", price_edit: "Edit Existing Price", item_delete: "Delete Item", grand_total: "Grand Total"
         },
         id: {
             app_desc: "Sistem Pengeluaran & Inventaris", forgot_pass: "Lupa Password?", login: "Masuk", tab_gi: "Pengeluaran (GI)", tab_gr: "Penerimaan (GR)", tab_inv: "Inventaris", stat_tot_gi: "Total Permintaan", stat_pend: "Menunggu Persetujuan", stat_comp: "Selesai", stat_pend_head: "Menunggu Head", stat_pend_wh: "Menunggu Gudang", stat_pend_recv: "Menunggu Diterima", hist_gi: "Riwayat Pengeluaran (GI)", click_filter_info: "Klik kartu statistik di atas untuk memfilter data.", ph_search_gi: "Cari GI (ID/Nama/Dept/Desk)...", btn_new_gi: "Form GI Baru", th_id: "NO GIF & Tanggal", th_req: "Info Pemohon", th_items: "Barang & Deskripsi Aktivitas", th_stat: "Status", th_act: "Aksi", hist_gr: "Riwayat Penerimaan (GR)", desc_gr: "Catatan barang masuk ke gudang.", ph_search_gr: "Cari GR (ID/Nama/Suplier)...", btn_new_gr: "Form GR Baru", th_gr_id: "ID GR & Tanggal", th_gr_by: "Diterima Oleh", th_gr_rem: "Catatan / Suplier", th_gr_items: "Barang Diterima", mast_inv: "Master Inventaris", desc_inv: "Kelola stok dan barang gudang.", btn_add_item: "Tambah Master Barang", th_it_code: "Kode Barang", th_it_name: "Nama Barang", th_it_spec: "Spesifikasi", th_it_cat: "Kategori", th_it_stock: "Stok / Satuan", btn_ok: "OK", btn_cancel: "Batal", btn_yes: "Ya, Lanjutkan", reset_pass: "Reset Kata Sandi", reset_info: "Tautan reset akan dikirim ke nomor WhatsApp Anda.", btn_send_wa: "Kirim Tautan WA", my_profile: "Profil Saya", dept: "Departemen", fullname: "Nama Lengkap", wa_phone: "No. WhatsApp", editable: "(Dapat Diubah)", new_pass: "Kata Sandi Baru", pass_note: "(Kosongkan jika tidak diubah)", btn_update_prof: "Perbarui Profil", form_gi: "Formulir Pengeluaran (GI)", req_dept: "Pemohon / Dept", sec_req: "Seksi Pemohon", ph_sec_req: "Cth: Maintenance / Produksi", act_desc: "Deskripsi Aktivitas", ph_act_desc: "Jelaskan aktivitas atau alasan...", item_list: "Daftar Barang", add_row: "Tambah Baris", curr_stk_short: "Sisa Stok", req_qty: "Jumlah Diminta", rsn_code: "Kode Alasan", cost_ctr: "Pusat Biaya *", btn_submit_form: "Kirim Formulir", form_gr: "Formulir Penerimaan (GR)", info_gr: "Input barang masuk. Data akan otomatis menambah stok Master Inventaris.", rem_supp: "Catatan / Suplier / No. PO", inc_items: "Barang Masuk", qty_recv: "Jml Diterima", btn_save_stk: "Simpan & Perbarui Stok", master_item: "Master Barang", it_code: "No/Kode Barang", it_name: "Nama Barang", it_spec: "Spesifikasi Barang", cat: "Kategori", curr_stk: "Stok Saat Ini", btn_save_item: "Simpan Barang", rej_req: "Tolak Permintaan", ph_rej: "Alasan penolakan...", btn_conf_rej: "Konfirmasi Tolak", no_data: "Tidak ada data.", btn_appr: "Setujui", btn_rej: "Tolak", btn_iss: "Keluarkan Barang", err_conn: "Koneksi Gagal.", err_req: "Harap isi semua kolom wajib.", ph_search_item: "Cari Barang...", ph_search_inv: "Cari Barang (Kode/Nama)...", btn_export_data: "Ekspor Laporan", export_data_title: "Ekspor Laporan", export_type: "Tipe Data", start_date: "Tanggal Mulai", end_date: "Tanggal Akhir", btn_export_items: "Ekspor", btn_import_items: "Impor", btn_template: "Template", btn_confirm_recv: "Konfirmasi Terima",
-            th_price: "Harga", total_price: "Total Harga", edit_price: "Edit Harga", grand_total: "Total Keseluruhan"
+            th_price: "Harga", total_price: "Total Harga", price_add: "Input Harga Baru", price_edit: "Edit Harga (Exist)", item_delete: "Hapus Item", grand_total: "Total Keseluruhan"
         }
     };
     const t = (key) => i18n[currentLang][key] || key;
@@ -358,18 +390,10 @@
         }).catch(err => { document.getElementById('exp-loading').classList.add('hidden'); showCustomAlert("Error", t('err_conn')); });
     }
 
-    // HELPER: Cek Hak Akses Edit Harga (Semua view, hanya user diizinkan yang edit)
-    function canEditPriceHelper() {
-        const accRights = currentUser.access_rights ? JSON.parse(currentUser.access_rights) : [];
-        const isAppAdmin = currentUser.role === 'Administrator';
-        return isAppAdmin || accRights.includes('edit_price');
-    }
-
     function generateExcel(data, type) {
         const wb = XLSX.utils.book_new(); const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
         let rows = [[`AUDIT REPORT - ${type === 'GI' ? 'GOOD ISSUE' : (type === 'GR' ? 'GOOD RECEIVE' : 'MASTER INVENTORY')}`], [`Generated By: ${currentUser.fullname} (${currentUser.role})`], [`Date: ${new Date().toLocaleString('id-ID')}`], []];
 
-        // Export selalu menampilkan Harga untuk transparansi audit
         if (type === 'GI') {
             let header = ["ID Request", "Tanggal", "Nomor GI ERP", "Nama", "Departemen", "Seksi", "Deskripsi Aktivitas", "Kode Barang", "Nama Barang", "Qty", "UoM", "Harga Satuan", "Total Harga", "Reason Code", "Cost Center", "Status L1", "Status WH", "Foto Issued", "Diterima Oleh", "Tanggal Terima", "Foto Received"];
             rows.push(header);
@@ -495,7 +519,7 @@
     }
     function saveUser() {
         let acc = []; document.querySelectorAll('.acc-chk').forEach(chk => { if(chk.checked && !chk.disabled) acc.push(chk.value); });
-        if (document.getElementById('u-role').value === 'Administrator') { acc = ['gi_submit', 'gr_submit', 'item_add', 'item_edit', 'stock_edit', 'export_data', 'edit_price']; }
+        if (document.getElementById('u-role').value === 'Administrator') { acc = ['gi_submit', 'gr_submit', 'item_add', 'item_edit', 'stock_edit', 'export_data', 'price_add', 'price_edit', 'item_delete']; }
         const p = { action: 'saveUser', isEdit: document.getElementById('u-user').disabled, data: { username: document.getElementById('u-user').value, password: document.getElementById('u-pass').value, fullname: document.getElementById('u-name').value, nik: document.getElementById('u-nik').value, role: document.getElementById('u-role').value, department: document.getElementById('u-dept').value, phone: document.getElementById('u-phone').value, access_rights: JSON.stringify(acc) } };
         fetch('api/users.php', {method:'POST', body:JSON.stringify(p)}).then(r=>r.json()).then(res => { if(res.code === 401) { logoutAction(); return; } if(res.success){ resetUserForm(); loadUsers(); showCustomAlert("Success", "Berhasil simpan user."); } else showCustomAlert("Error", res.message); });
     }

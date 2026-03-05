@@ -14,6 +14,7 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="icon" type="image/png" href="https://i.ibb.co.com/prMYS06h/LOGO-2025-03.png">
   <style>
     body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
     .blob-bg { position: absolute; border-radius: 50%; filter: blur(20px); opacity: 0.4; animation: blobMove 6s infinite alternate; z-index: 0; }
@@ -59,7 +60,7 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
       <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-slide-up overflow-hidden">
           <div class="bg-slate-50 px-6 py-5 border-b border-slate-200 flex justify-between items-center">
               <h3 class="font-bold text-slate-800 tracking-tight">Reset Password</h3>
-              <button onclick="document.getElementById('modal-forgot').classList.add('hidden')" class="text-slate-400 hover:text-red-500"><i class="fas fa-times text-lg"></i></button>
+              <button onclick="document.getElementById('modal-forgot').classList.add('hidden')" class="text-slate-400 hover:text-red-500 transition"><i class="fas fa-times text-lg"></i></button>
           </div>
           <div class="p-6">
               <div class="mb-5 bg-indigo-50 text-indigo-700 text-[10px] p-4 rounded-xl border border-indigo-100 font-medium">
@@ -75,9 +76,7 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
   </div>
 
   <script>
-    // ==========================================
-    // FUNGSI TRIGGER ESC UNTUK MENUTUP MODAL FORGOT PASSWORD
-    // ==========================================
+    // TRIGGER ESC UNTUK MENUTUP MODAL FORGOT PASSWORD
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' || e.keyCode === 27) {
             const forgotModal = document.getElementById('modal-forgot');
@@ -86,12 +85,12 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
             }
         }
     });
-    // ==========================================
 
     function toggleLoginPass() {
         const p = document.getElementById('login-p'); const icon = document.getElementById('icon-login-pass');
         if(p.type === 'password') { p.type = 'text'; icon.className = 'fas fa-eye-slash'; } else { p.type = 'password'; icon.className = 'fas fa-eye'; }
     }
+
     function handleLogin() {
         const u = document.getElementById('login-u').value; const p = document.getElementById('login-p').value; const btn = document.getElementById('btn-login'); 
         btn.disabled = true; btn.innerHTML = `<span class="loader-spin mr-2 border-t-white"></span> Memproses...`;
@@ -102,6 +101,7 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
             if(res.success) { window.location.href = 'index.php'; } else { alert(res.message); }
         }).catch(err => { btn.disabled = false; btn.innerHTML = `Login`; alert("Connection error."); });
     }
+
     function submitForgot() {
         const u = document.getElementById('forgot-username').value; if(!u) return alert("Silakan masukkan username");
         const btn = document.getElementById('btn-forgot'); const originalText = btn.innerHTML;

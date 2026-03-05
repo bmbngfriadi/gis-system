@@ -1,6 +1,15 @@
 <?php include 'includes/header.php'; ?>
 
 <div id="view-gi" class="space-y-6 animate-slide-up">
+
+    <div id="gi-insights" class="hidden bg-gradient-to-r from-indigo-900 to-purple-800 rounded-2xl shadow-md p-3 flex items-center text-white overflow-hidden relative">
+        <div class="font-black text-[10px] uppercase tracking-widest whitespace-nowrap pr-4 mr-2 border-r border-white/20 flex items-center gap-2 z-10">
+            <i class="fas fa-fire text-orange-400 animate-pulse text-sm"></i> <span data-translate="true">Top Issued</span>
+        </div>
+        <div class="scrolling-text-container text-xs font-medium opacity-90 cursor-default" id="gi-top-items" title="Hover to pause">
+            </div>
+    </div>
+
     <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
         <div id="card-gi-all" onclick="setGiFilter('All')" class="card-filter card-filter-active bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg flex items-center gap-3 relative group shine-effect text-white">
             <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm z-10"><i class="fas fa-list"></i></div>
@@ -174,6 +183,15 @@
 <?php include 'includes/footer.php'; ?>
 
 <script>
+    // ==========================================
+    // SETTINGAN KECEPATAN TEKS STATISTIK (MARQUEE)
+    // ==========================================
+    // Ubah angka di bawah ini untuk mengatur kecepatan (dalam detik).
+    // Semakin KECIL angkanya = Semakin CEPAT jalannya.
+    // Semakin BESAR angkanya = Semakin LAMBAT jalannya.
+    const SCROLL_SPEED_SECONDS = 80; 
+    // ==========================================
+
     let giRowCount = 0; 
     let giData = [];
     let activeGiFilter = 'All';
@@ -224,17 +242,36 @@
         const isWH = (['Warehouse', 'Administrator'].includes(currentUser.role) || (currentUser.role === 'TeamLeader' && currentUser.department.toLowerCase() === 'warehouse'));
 
         let countHead = 0, countWh = 0, countRecv = 0, countDone = 0;
+        let itemFreq = {}; 
+
         giData.forEach(r => {
             if(r.status === 'Pending Head') countHead++;
             if(r.status === 'Pending Warehouse') countWh++;
             if(r.status === 'Pending Receive') countRecv++;
             if(r.status === 'Completed' || r.status === 'Rejected' || r.status === 'Cancelled' || r.status === 'Pending No GI (ERP)') countDone++;
+            
+            if(r.status !== 'Rejected' && r.status !== 'Cancelled') {
+                (r.items || []).forEach(i => {
+                    if(i.name) itemFreq[i.name] = (itemFreq[i.name] || 0) + parseInt(i.qty);
+                });
+            }
         });
+
         document.getElementById('stat-total').innerText = giData.length;
         document.getElementById('stat-pending-head').innerText = countHead;
         document.getElementById('stat-pending-wh').innerText = countWh;
         document.getElementById('stat-pending-recv').innerText = countRecv;
         document.getElementById('stat-done').innerText = countDone;
+
+        // Render Animasi Insight / Top Items dengan Kecepatan Custom
+        let sortedItems = Object.entries(itemFreq).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        if(sortedItems.length > 0) {
+            let marqueeText = sortedItems.map((item, index) => `<span class="inline-block mx-4"><b>#${index+1}</b> ${item[0]} <span class="bg-white/20 px-2 py-0.5 rounded text-[10px] ml-1 text-orange-200">${item[1]} Requested</span></span>`).join(' <i class="fas fa-circle text-[5px] text-white/30 mx-2"></i> ');
+            document.getElementById('gi-insights').classList.remove('hidden');
+            document.getElementById('gi-top-items').innerHTML = `<div class="scrolling-text" style="animation-duration: ${SCROLL_SPEED_SECONDS}s;">${marqueeText}</div>`;
+        } else {
+            document.getElementById('gi-insights').classList.add('hidden');
+        }
 
         if(!data || data.length === 0) { tb.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-slate-400 text-xs italic" data-translate="true" data-i18n="no_data">No data found.</td></tr>`; cardContainer.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs italic" data-translate="true" data-i18n="no_data">No data found.</div>`; AutoTranslator.processDOM(); return; }
 

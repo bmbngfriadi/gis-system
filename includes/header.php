@@ -13,8 +13,9 @@ $rights = json_decode($currentUser['access_rights'] ?? '[]', true) ?: [];
 $isAdmin = ($role === 'Administrator');
 $isWH = ($role === 'Warehouse' || ($role === 'TeamLeader' && strtolower($dept) === 'warehouse'));
 
+// Update fallback rights jika WH lama tidak ada setingan khusus di DB
 if (empty($rights) && $isWH) {
-    $rights = ['gi_submit', 'gr_submit', 'item_add', 'item_edit', 'stock_edit', 'export_data', 'edit_price'];
+    $rights = ['gi_submit', 'gr_submit', 'item_add', 'item_edit', 'stock_edit', 'export_data', 'price_add', 'price_edit', 'item_delete'];
 }
 ?>
 <!DOCTYPE html>
@@ -44,6 +45,13 @@ if (empty($rights) && $isWH) {
     @keyframes shine { 0% { left: -100%; } 20% { left: 200%; } 100% { left: 200%; } }
     @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     .bg-live-gradient { background-size: 200% 200%; animation: gradientBG 4s ease infinite; }
+    
+    /* ANIMASI SCROLLING TEXT STATISTIK */
+    .scrolling-text-container { overflow: hidden; white-space: nowrap; position: relative; width: 100%; display: flex; align-items: center; }
+    .scrolling-text { display: inline-block; padding-left: 100%; animation: scrollText linear infinite; }
+    .scrolling-text:hover { animation-play-state: paused; }
+    @keyframes scrollText { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
     .status-badge { padding: 6px 12px; border-radius: 9999px; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; border: 1px solid transparent; letter-spacing: 0.05em; display: inline-flex; align-items: center; justify-content: center;}
     .btn-animated { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
     .btn-animated:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }

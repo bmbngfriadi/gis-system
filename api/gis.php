@@ -25,7 +25,7 @@ $serverRole = $_SESSION['user_data']['role'] ?? '';
 $serverDept = $_SESSION['user_data']['department'] ?? '';
 $serverName = $_SESSION['user_data']['fullname'] ?? '';
 
-// MIGRATION: Tambahkan kolom price
+// MIGRATION: Tambahkan kolom price & erp_no
 $migrations = [
     "ALTER TABLE gis_requests ADD COLUMN erp_gi_no VARCHAR(100) NULL AFTER req_id",
     "ALTER TABLE gis_requests ADD COLUMN issue_photo VARCHAR(255) NULL",
@@ -48,8 +48,9 @@ function checkAccessSession($perm) {
     global $serverRole, $serverDept;
     if($serverRole === 'Administrator') return true;
     $rights = json_decode($_SESSION['user_data']['access_rights'] ?? '[]', true) ?: [];
+    // Fallback hak akses jika role WH belum di-set di database
     if (empty($rights) && in_array($serverRole, ['Warehouse']) || ($serverRole === 'TeamLeader' && strtolower($serverDept) === 'warehouse')) {
-        $rights = ['gi_submit', 'gr_submit', 'item_add', 'item_edit', 'stock_edit', 'export_data', 'view_price'];
+        $rights = ['gi_submit', 'gr_submit', 'item_add', 'item_edit', 'stock_edit', 'export_data', 'price_add', 'price_edit', 'item_delete'];
     }
     return in_array($perm, $rights);
 }
@@ -71,9 +72,6 @@ function uploadGisPhoto($base64Data, $prefix) {
     return false;
 }
 
-// --------------------------------------------------------------------------------------
-// FORMATTING WHATSAPP MESSAGE ITEM LIST
-// --------------------------------------------------------------------------------------
 function buildItemListText($conn, $itemsArray) {
     $text = "📦 *DETAIL BARANG:*\n";
     $text .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
@@ -114,6 +112,20 @@ if($action == 'getInventory') {
     safeSendJson($data);
 }
 
+// ------------------- HAPUS ITEM (DELETE) -------------------
+if($action == 'deleteItem') {
+    if(!checkAccessSession('item_delete')) safeSendJson(['success'=>false, 'message'=>'Unauthorized.', 'code'=>403]);
+    
+    $code = $conn->real_escape_string($input['item_code'] ?? '');
+    if(empty($code)) safeSendJson(['success'=>false, 'message'=>'Kode item kosong.']);
+    
+    if($conn->query("DELETE FROM gis_inventory WHERE item_code='$code'")) {
+        safeSendJson(['success'=>true, 'message'=>"Item $code berhasil dihapus."]);
+    } else {
+        safeSendJson(['success'=>false, 'message'=>$conn->error]);
+    }
+}
+
 if($action == 'saveItem') {
     $isEdit = !empty($input['is_edit']) && $input['is_edit'] == '1';
     if(!$isEdit && !checkAccessSession('item_add')) safeSendJson(['success'=>false, 'message'=>'Access Denied', 'code'=>403]);
@@ -129,7 +141,10 @@ if($action == 'saveItem') {
     
     $canEditInfo = checkAccessSession('item_edit');
     $canEditStock = checkAccessSession('stock_edit');
-    $canViewPrice = checkAccessSession('view_price');
+    
+    // PEMISAHAN LOGIKA HAK AKSES HARGA
+    $canEditPriceExisting = checkAccessSession('price_edit');
+    $canAddPriceNew = checkAccessSession('price_add');
 
     if($isEdit) {
         $updates = [];
@@ -138,16 +153,23 @@ if($action == 'saveItem') {
             $updates[] = "category='$cat'"; $updates[] = "uom='$uom'";
         }
         if($canEditStock) { $updates[] = "stock=$stock"; }
-        if($canViewPrice) { $updates[] = "price=$price"; }
+        if($canEditPriceExisting) { $updates[] = "price=$price"; }
         $updates[] = "last_updated='$now'";
+        
         $sql = "UPDATE gis_inventory SET " . implode(', ', $updates) . " WHERE item_code='$code'";
     } else {
+        // Jika belum punya akses harga baru, paksa harga = 0
+        $insertPrice = $canAddPriceNew ? $price : 0;
+        
+        $dupUpdates = [];
+        $dupUpdates[] = "item_name='$name'"; $dupUpdates[] = "item_spec='$spec'"; 
+        $dupUpdates[] = "category='$cat'"; $dupUpdates[] = "uom='$uom'"; $dupUpdates[] = "stock=$stock";
+        if($canEditPriceExisting) { $dupUpdates[] = "price=$price"; } // Update duplicate (kategori existing)
+        $dupUpdates[] = "last_updated='$now'";
+
         $sql = "INSERT INTO gis_inventory (item_code, item_name, item_spec, category, uom, price, stock, last_updated) 
-                VALUES ('$code', '$name', '$spec', '$cat', '$uom', $price, $stock, '$now') 
-                ON DUPLICATE KEY UPDATE item_name='$name', item_spec='$spec', category='$cat', uom='$uom', stock=$stock, last_updated='$now'";
-        if($canViewPrice) {
-            $sql = str_replace("last_updated='$now'", "last_updated='$now', price=$price", $sql);
-        }
+                VALUES ('$code', '$name', '$spec', '$cat', '$uom', $insertPrice, $stock, '$now') 
+                ON DUPLICATE KEY UPDATE " . implode(', ', $dupUpdates);
     }
             
     if($conn->query($sql)) safeSendJson(['success'=>true, 'message'=>'Item saved.']);
@@ -216,7 +238,8 @@ if($action == 'submitGR') {
                 VALUES ('$grId', '$erpGrNo', '$serverUser', '$serverName', '$remarks', '$photoUrl', '$itemsJson', '$now')";
         $conn->query($sql);
 
-        $canViewPrice = checkAccessSession('view_price');
+        // Karena GR menimpa harga item yang sudah ada
+        $canEditPrice = checkAccessSession('price_edit');
 
         foreach($items as $it) {
             $ic = $conn->real_escape_string($it['code']); 
@@ -224,7 +247,7 @@ if($action == 'submitGR') {
             $price = floatval($it['price'] ?? 0);
             
             $updSql = "UPDATE gis_inventory SET stock = stock + $qty, last_updated = '$now'";
-            if($canViewPrice && $price > 0) { $updSql .= ", price = $price"; } // Perbarui harga master jika diinput
+            if($canEditPrice && $price > 0) { $updSql .= ", price = $price"; } 
             $updSql .= " WHERE item_code = '$ic'";
             $conn->query($updSql);
         }
