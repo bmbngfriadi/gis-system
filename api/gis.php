@@ -1,14 +1,13 @@
 <?php
 error_reporting(0);
 ini_set('display_errors', 0);
-ini_set('memory_limit', '256M');
+ini_set('memory_limit', '256M'); 
 
 session_start();
 require 'db.php'; 
 require 'helper.php';
 
 if($conn) { $conn->set_charset("utf8mb4"); }
-
 header("X-Frame-Options: DENY");
 header("X-Content-Type-Options: nosniff");
 header('Content-Type: application/json; charset=utf-8');
@@ -26,15 +25,20 @@ $serverRole = $_SESSION['user_data']['role'] ?? '';
 $serverDept = $_SESSION['user_data']['department'] ?? '';
 $serverName = $_SESSION['user_data']['fullname'] ?? '';
 
-// Auto-migration Kolom
-try {
-    $conn->query("ALTER TABLE gis_requests ADD COLUMN issue_photo VARCHAR(255) NULL AFTER app_wh");
-    $conn->query("ALTER TABLE gis_requests ADD COLUMN receive_photo VARCHAR(255) NULL AFTER issue_photo");
-    $conn->query("ALTER TABLE gis_requests ADD COLUMN received_by VARCHAR(100) NULL AFTER receive_photo");
-    $conn->query("ALTER TABLE gis_requests ADD COLUMN receive_time DATETIME NULL AFTER received_by");
-    // TAMBAHAN KOLOM UNTUK FOTO GR
-    $conn->query("ALTER TABLE gis_receives ADD COLUMN gr_photo VARCHAR(255) NULL AFTER remarks");
-} catch (Exception $e) {}
+// MIGRATION: Tambahkan kolom price
+$migrations = [
+    "ALTER TABLE gis_requests ADD COLUMN erp_gi_no VARCHAR(100) NULL AFTER req_id",
+    "ALTER TABLE gis_requests ADD COLUMN issue_photo VARCHAR(255) NULL",
+    "ALTER TABLE gis_requests ADD COLUMN receive_photo VARCHAR(255) NULL",
+    "ALTER TABLE gis_requests ADD COLUMN received_by VARCHAR(100) NULL",
+    "ALTER TABLE gis_requests ADD COLUMN receive_time DATETIME NULL",
+    "ALTER TABLE gis_receives ADD COLUMN erp_gr_no VARCHAR(100) NULL AFTER gr_id",
+    "ALTER TABLE gis_receives ADD COLUMN gr_photo VARCHAR(255) NULL",
+    "ALTER TABLE gis_inventory ADD COLUMN price DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER uom"
+];
+foreach($migrations as $m) {
+    try { $conn->query($m); } catch (Exception $e) {}
+}
 
 $input = json_decode(file_get_contents('php://input'), true);
 $action = $input['action'] ?? '';
@@ -45,7 +49,7 @@ function checkAccessSession($perm) {
     if($serverRole === 'Administrator') return true;
     $rights = json_decode($_SESSION['user_data']['access_rights'] ?? '[]', true) ?: [];
     if (empty($rights) && in_array($serverRole, ['Warehouse']) || ($serverRole === 'TeamLeader' && strtolower($serverDept) === 'warehouse')) {
-        $rights = ['gi_submit', 'gr_submit', 'item_add', 'item_edit', 'stock_edit', 'export_data'];
+        $rights = ['gi_submit', 'gr_submit', 'item_add', 'item_edit', 'stock_edit', 'export_data', 'view_price'];
     }
     return in_array($perm, $rights);
 }
@@ -67,17 +71,39 @@ function uploadGisPhoto($base64Data, $prefix) {
     return false;
 }
 
+// --------------------------------------------------------------------------------------
+// FORMATTING WHATSAPP MESSAGE ITEM LIST
+// --------------------------------------------------------------------------------------
 function buildItemListText($conn, $itemsArray) {
-    $text = "📋 *Daftar Barang & Sisa Stok:*\n";
+    $text = "📦 *DETAIL BARANG:*\n";
+    $text .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+    $grandTotal = 0;
     foreach($itemsArray as $it) {
         $code = $conn->real_escape_string($it['code']);
         $name = $it['name'];
         $qty = $it['qty'];
         $uom = $it['uom'] ?? '';
+        $price = floatval($it['price'] ?? 0);
+        $total = $price * intval($qty);
+        $grandTotal += $total;
+
         $stkQ = $conn->query("SELECT stock FROM gis_inventory WHERE item_code='$code'")->fetch_assoc();
         $currentStock = $stkQ ? $stkQ['stock'] : 0;
-        $text .= "▪️ $code - $name\n   Jml: $qty $uom | Sisa Stok: $currentStock $uom\n";
+        
+        $text .= "🔸 *$code*\n";
+        $text .= "   ▪ Nama: $name\n";
+        $text .= "   ▪ Qty : *$qty $uom*\n";
+        if ($price > 0) {
+            $text .= "   ▪ Harga: Rp " . number_format($price, 0, ',', '.') . "\n";
+            $text .= "   ▪ Total: Rp " . number_format($total, 0, ',', '.') . "\n";
+        }
+        $text .= "   ▪ Sisa: $currentStock $uom\n\n";
     }
+    if ($grandTotal > 0) {
+        $text .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+        $text .= "💰 *GRAND TOTAL: Rp " . number_format($grandTotal, 0, ',', '.') . "*\n";
+    }
+    $text .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈";
     return $text;
 }
 
@@ -99,9 +125,11 @@ if($action == 'saveItem') {
     $cat = $conn->real_escape_string($input['category'] ?? '');
     $uom = $conn->real_escape_string($input['uom'] ?? '');
     $stock = intval($input['stock'] ?? 0);
+    $price = floatval($input['price'] ?? 0);
     
     $canEditInfo = checkAccessSession('item_edit');
     $canEditStock = checkAccessSession('stock_edit');
+    $canViewPrice = checkAccessSession('view_price');
 
     if($isEdit) {
         $updates = [];
@@ -110,12 +138,16 @@ if($action == 'saveItem') {
             $updates[] = "category='$cat'"; $updates[] = "uom='$uom'";
         }
         if($canEditStock) { $updates[] = "stock=$stock"; }
+        if($canViewPrice) { $updates[] = "price=$price"; }
         $updates[] = "last_updated='$now'";
         $sql = "UPDATE gis_inventory SET " . implode(', ', $updates) . " WHERE item_code='$code'";
     } else {
-        $sql = "INSERT INTO gis_inventory (item_code, item_name, item_spec, category, uom, stock, last_updated) 
-                VALUES ('$code', '$name', '$spec', '$cat', '$uom', $stock, '$now') 
+        $sql = "INSERT INTO gis_inventory (item_code, item_name, item_spec, category, uom, price, stock, last_updated) 
+                VALUES ('$code', '$name', '$spec', '$cat', '$uom', $price, $stock, '$now') 
                 ON DUPLICATE KEY UPDATE item_name='$name', item_spec='$spec', category='$cat', uom='$uom', stock=$stock, last_updated='$now'";
+        if($canViewPrice) {
+            $sql = str_replace("last_updated='$now'", "last_updated='$now', price=$price", $sql);
+        }
     }
             
     if($conn->query($sql)) safeSendJson(['success'=>true, 'message'=>'Item saved.']);
@@ -135,11 +167,12 @@ if($action == 'importItems') {
             $cat = $conn->real_escape_string($it['category'] ?? 'General');
             $uom = $conn->real_escape_string($it['uom'] ?? 'Pcs');
             $stock = intval($it['stock'] ?? 0);
+            $price = floatval($it['price'] ?? 0);
             
             if(!empty($code) && !empty($name)) {
-                $sql = "INSERT INTO gis_inventory (item_code, item_name, item_spec, category, uom, stock, last_updated) 
-                        VALUES ('$code', '$name', '$spec', '$cat', '$uom', $stock, '$now') 
-                        ON DUPLICATE KEY UPDATE item_name='$name', item_spec='$spec', category='$cat', uom='$uom', stock=$stock, last_updated='$now'";
+                $sql = "INSERT INTO gis_inventory (item_code, item_name, item_spec, category, uom, price, stock, last_updated) 
+                        VALUES ('$code', '$name', '$spec', '$cat', '$uom', $price, $stock, '$now') 
+                        ON DUPLICATE KEY UPDATE item_name='$name', item_spec='$spec', category='$cat', uom='$uom', price=$price, stock=$stock, last_updated='$now'";
                 $conn->query($sql);
             }
         }
@@ -167,33 +200,49 @@ if($action == 'submitGR') {
     if(!checkAccessSession('gr_submit')) safeSendJson(['success'=>false, 'message'=>'Unauthorized.', 'code'=>403]);
 
     $grId = "GR-" . time();
+    $erpGrNo = $conn->real_escape_string($input['erp_gr_no'] ?? '');
     $remarks = $conn->real_escape_string($input['remarks']);
     $items = $input['items']; 
-    $itemsJson = json_encode($items);
+    
+    $itemsJson = $conn->real_escape_string(json_encode($items));
 
-    // PENGECEKAN FOTO GR
-    if(empty($input['photoBase64'])) safeSendJson(['success'=>false, 'message'=>'Bukti foto penerimaan (GR) wajib dilampirkan.']);
+    if(empty($input['photoBase64'])) safeSendJson(['success'=>false, 'message'=>'Bukti foto penerimaan wajib dilampirkan.']);
     $photoUrl = uploadGisPhoto($input['photoBase64'], "GR_" . preg_replace('/[^a-zA-Z0-9]/', '', $grId));
     if(!$photoUrl) safeSendJson(['success'=>false, 'message'=>'Gagal menyimpan foto GR.']);
 
     $conn->begin_transaction();
     try {
-        $sql = "INSERT INTO gis_receives (gr_id, username, fullname, remarks, gr_photo, items_json, created_at) 
-                VALUES ('$grId', '$serverUser', '$serverName', '$remarks', '$photoUrl', '$itemsJson', '$now')";
+        $sql = "INSERT INTO gis_receives (gr_id, erp_gr_no, username, fullname, remarks, gr_photo, items_json, created_at) 
+                VALUES ('$grId', '$erpGrNo', '$serverUser', '$serverName', '$remarks', '$photoUrl', '$itemsJson', '$now')";
         $conn->query($sql);
+
+        $canViewPrice = checkAccessSession('view_price');
 
         foreach($items as $it) {
             $ic = $conn->real_escape_string($it['code']); 
             $qty = intval($it['qty']);
-            $conn->query("UPDATE gis_inventory SET stock = stock + $qty, last_updated = '$now' WHERE item_code = '$ic'");
+            $price = floatval($it['price'] ?? 0);
+            
+            $updSql = "UPDATE gis_inventory SET stock = stock + $qty, last_updated = '$now'";
+            if($canViewPrice && $price > 0) { $updSql .= ", price = $price"; } // Perbarui harga master jika diinput
+            $updSql .= " WHERE item_code = '$ic'";
+            $conn->query($updSql);
         }
         $conn->commit();
         
         $itemsText = buildItemListText($conn, $items);
-        $msgHeader = "📥 *GOOD RECEIVE (BARANG MASUK)*\nGR ID: $grId\nReceived by: $serverName\nSupplier/Remarks: $remarks\n\n$itemsText";
         
-        $whPhones = array_unique(array_merge(getPhones($conn, 'Warehouse'), getPhones($conn, 'TeamLeader', 'Warehouse'), getPhones($conn, 'Administrator')));
-        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Stok Master telah berhasil ditambahkan otomatis.");
+        $msgHeader = "📥 *GOOD RECEIVE (BARANG MASUK)* 📥\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+        $msgHeader .= "🔖 *ID GR* : $grId\n";
+        $msgHeader .= "🧾 *No ERP* : $erpGrNo\n";
+        $msgHeader .= "👤 *Penerima* : $serverName\n";
+        $msgHeader .= "📝 *Catatan* : $remarks\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n";
+        $msgHeader .= $itemsText;
+        
+        $whPhones = array_unique(array_merge((array)getPhones($conn, 'Warehouse'), (array)getPhones($conn, 'TeamLeader', 'Warehouse'), (array)getPhones($conn, 'Administrator')));
+        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Info:* Stok Master telah berhasil ditambahkan secara otomatis.");
 
         safeSendJson(['success'=>true, 'message'=>'Good Receive berhasil diproses. Stok bertambah.']);
     } catch (Exception $e) { 
@@ -232,29 +281,37 @@ if($action == 'submitRequest') {
     foreach($items as $it) {
         $ic = $conn->real_escape_string($it['code']);
         $reqQty = intval($it['qty']);
-        $cc = trim($it['cost_center'] ?? '');
+        $cc = trim((string)($it['cost_center'] ?? ''));
         if(empty($cc)) safeSendJson(['success'=>false, 'message'=>"Cost Center WAJIB diisi."]);
 
         $cek = $conn->query("SELECT stock, item_name FROM gis_inventory WHERE item_code = '$ic'")->fetch_assoc();
-        if(!$cek || $cek['stock'] < $reqQty) safeSendJson(['success'=>false, 'message'=>"Stock tidak cukup."]);
+        if(!$cek || $cek['stock'] < $reqQty) safeSendJson(['success'=>false, 'message'=>"Stock tidak cukup untuk $ic"]);
     }
 
-    $itemsJson = json_encode($items);
+    $itemsJson = $conn->real_escape_string(json_encode($items));
     $sql = "INSERT INTO gis_requests (req_id, username, fullname, department, section, purpose, items_json, created_at) 
             VALUES ('$reqId', '$serverUser', '$serverName', '$serverDept', '$sec', '$purpose', '$itemsJson', '$now')";
             
     if($conn->query($sql)) {
         $itemsText = buildItemListText($conn, $items);
-        $msgHeader = "📦 *NEW GOOD ISSUE REQUEST*\nNO GIF: $reqId\nUser: $serverName ($serverDept / $sec)\nAct. Desc: $purpose\n\n$itemsText";
+        
+        $msgHeader = "🚨 *NEW GOOD ISSUE REQUEST* 🚨\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+        $msgHeader .= "🔖 *ID GIF* : $reqId\n";
+        $msgHeader .= "👤 *Pemohon* : $serverName\n";
+        $msgHeader .= "🏢 *Dept/Sec* : $serverDept / $sec\n";
+        $msgHeader .= "📝 *Keperluan*: $purpose\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n";
+        $msgHeader .= $itemsText;
 
-        $headPhones = getPhones($conn, ['SectionHead', 'TeamLeader'], $serverDept);
-        foreach($headPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Silakan login ke sistem untuk Approve.");
+        $headPhones = (array)getPhones($conn, ['SectionHead', 'TeamLeader'], $serverDept);
+        foreach($headPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Action:* Silakan login ke sistem untuk melakukan Approval.");
         
         $userPhone = getUserPhone($conn, $serverUser);
-        if($userPhone) sendWA($userPhone, $msgHeader . "\n👉 Menunggu persetujuan Dept Head.");
+        if($userPhone) sendWA($userPhone, $msgHeader . "\n\n💡 *Status:* Menunggu persetujuan Dept Head.");
 
-        $whPhones = array_unique(array_merge(getPhones($conn, 'Warehouse'), getPhones($conn, 'TeamLeader', 'Warehouse')));
-        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Status saat ini: Menunggu persetujuan Dept Head.");
+        $whPhones = array_unique(array_merge((array)getPhones($conn, 'Warehouse'), (array)getPhones($conn, 'TeamLeader', 'Warehouse')));
+        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Status:* Menunggu persetujuan Dept Head.");
 
         safeSendJson(['success'=>true, 'message'=>'Request submitted.']);
     } else safeSendJson(['success'=>false, 'message'=>$conn->error]);
@@ -275,24 +332,34 @@ if($action == 'editRequest') {
     foreach($items as $it) {
         $ic = $conn->real_escape_string($it['code']);
         $reqQty = intval($it['qty']);
-        if(empty(trim($it['cost_center'] ?? ''))) safeSendJson(['success'=>false, 'message'=>"Cost Center WAJIB diisi."]);
+        if(empty(trim((string)($it['cost_center'] ?? '')))) safeSendJson(['success'=>false, 'message'=>"Cost Center WAJIB diisi."]);
 
-        $cek = $conn->query("SELECT stock, item_name FROM gis_inventory WHERE item_code = '$ic'")->fetch_assoc();
+        $cek = $conn->query("SELECT stock FROM gis_inventory WHERE item_code = '$ic'")->fetch_assoc();
         if(!$cek || $cek['stock'] < $reqQty) safeSendJson(['success'=>false, 'message'=>"Stock tidak cukup"]);
     }
 
-    $itemsJson = json_encode($items);
+    $itemsJson = $conn->real_escape_string(json_encode($items));
     $sql = "UPDATE gis_requests SET section='$sec', purpose='$purpose', items_json='$itemsJson' WHERE req_id='$reqId'";
     
     if($conn->query($sql)) {
         $itemsText = buildItemListText($conn, $items);
-        $msgHeader = "✏️ *GOOD ISSUE EDITED*\nNO GIF: $reqId\nDiubah oleh: $serverUser\nAct. Desc: $purpose\n\n$itemsText";
         
-        $headPhones = getPhones($conn, ['SectionHead', 'TeamLeader'], $cekReq['department']);
-        foreach($headPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Silakan login untuk Approve form yang baru diubah.");
+        $msgHeader = "✏️ *GOOD ISSUE UPDATED* ✏️\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+        $msgHeader .= "🔖 *ID GIF* : $reqId\n";
+        $msgHeader .= "👤 *Diubah By*: $serverName\n";
+        $msgHeader .= "📝 *Keperluan*: $purpose\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n";
+        $msgHeader .= $itemsText;
+        
+        $headPhones = (array)getPhones($conn, ['SectionHead', 'TeamLeader'], $cekReq['department']);
+        foreach($headPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Action:* Form telah diubah oleh User. Silakan login untuk Approve.");
 
         $userPhone = getUserPhone($conn, $serverUser);
-        if($userPhone) sendWA($userPhone, $msgHeader . "\n👉 Form berhasil diubah, menunggu persetujuan Dept Head.");
+        if($userPhone) sendWA($userPhone, $msgHeader . "\n\n💡 *Status:* Form berhasil diubah, menunggu persetujuan Dept Head.");
+
+        $whPhones = array_unique(array_merge((array)getPhones($conn, 'Warehouse'), (array)getPhones($conn, 'TeamLeader', 'Warehouse')));
+        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Status:* Form telah diubah User. Menunggu persetujuan Dept Head.");
 
         safeSendJson(['success'=>true, 'message'=>'Request updated successfully.']);
     } else safeSendJson(['success'=>false, 'message'=>$conn->error]);
@@ -309,16 +376,23 @@ if($action == 'cancelRequest') {
     if($conn->query("UPDATE gis_requests SET status='Cancelled' WHERE req_id='$reqId'")) {
         $items = json_decode($cekReq['items_json'], true) ?: [];
         $itemsText = buildItemListText($conn, $items);
-        $msgHeader = "🚫 *GOOD ISSUE CANCELLED*\nNO GIF: $reqId\nDibatalkan oleh: $serverName\nDept/Sec: {$cekReq['department']} / {$cekReq['section']}\n\n$itemsText";
+        
+        $msgHeader = "🚫 *GOOD ISSUE CANCELLED* 🚫\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+        $msgHeader .= "🔖 *ID GIF* : $reqId\n";
+        $msgHeader .= "👤 *Batal By* : $serverName\n";
+        $msgHeader .= "🏢 *Dept/Sec* : {$cekReq['department']} / {$cekReq['section']}\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n";
+        $msgHeader .= $itemsText;
 
         $userPhone = getUserPhone($conn, $serverUser);
-        if($userPhone) sendWA($userPhone, $msgHeader . "\n👉 Anda telah membatalkan permintaan ini.");
+        if($userPhone) sendWA($userPhone, $msgHeader . "\n\n💡 *Info:* Anda telah berhasil membatalkan permintaan ini.");
 
-        $headPhones = getPhones($conn, ['SectionHead', 'TeamLeader'], $cekReq['department']);
-        foreach($headPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Permintaan dibatalkan oleh pemohon. Abaikan pengajuan ini.");
+        $headPhones = (array)getPhones($conn, ['SectionHead', 'TeamLeader'], $cekReq['department']);
+        foreach($headPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Info:* Permintaan dibatalkan oleh pemohon. Harap abaikan pengajuan ini.");
 
-        $whPhones = array_unique(array_merge(getPhones($conn, 'Warehouse'), getPhones($conn, 'TeamLeader', 'Warehouse')));
-        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Permintaan batal masuk ke gudang.");
+        $whPhones = array_unique(array_merge((array)getPhones($conn, 'Warehouse'), (array)getPhones($conn, 'TeamLeader', 'Warehouse')));
+        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Info:* Permintaan telah dibatalkan oleh User.");
 
         safeSendJson(['success'=>true, 'message'=>'Request cancelled successfully.']);
     } else {
@@ -342,11 +416,16 @@ if($action == 'updateStatus') {
             $conn->query("UPDATE gis_requests SET status='Pending Warehouse', app_head='Approved by $serverName', head_time='$now' WHERE req_id='$id'");
             
             $itemsText = buildItemListText($conn, $items);
-            $msgHeader = "✅ *GI APPROVED BY HEAD*\nNO GIF: $id\nApproved by: $serverName\n\n$itemsText";
+            $msgHeader = "✅ *GI APPROVED BY HEAD* ✅\n";
+            $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+            $msgHeader .= "🔖 *ID GIF* : $id\n";
+            $msgHeader .= "👤 *Approve By*: $serverName\n";
+            $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n";
+            $msgHeader .= $itemsText;
 
-            $whPhones = array_unique(array_merge(getPhones($conn, 'Warehouse'), getPhones($conn, 'TeamLeader', 'Warehouse')));
-            foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Silakan siapkan barang dan proses (Issue) di sistem.");
-            if($reqPhone) sendWA($reqPhone, $msgHeader . "\n👉 Permintaan Anda telah disetujui Head dan sedang disiapkan Gudang.");
+            $whPhones = array_unique(array_merge((array)getPhones($conn, 'Warehouse'), (array)getPhones($conn, 'TeamLeader', 'Warehouse')));
+            foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Action:* Silakan siapkan barang fisik dan lakukan pengeluaran (Issue) di sistem.");
+            if($reqPhone) sendWA($reqPhone, $msgHeader . "\n\n💡 *Status:* Permintaan Anda telah disetujui Head dan saat ini sedang disiapkan oleh pihak Gudang.");
             
             safeSendJson(['success'=>true, 'message'=>'Approved by Head.']);
         }
@@ -370,12 +449,17 @@ if($action == 'updateStatus') {
                 $conn->commit();
                 
                 $itemsText = buildItemListText($conn, $items); 
-                $msgHeader = "🚚 *GI ISSUED BY WAREHOUSE*\nNO GIF: $id\nIssued by: $serverName\n\n$itemsText";
+                $msgHeader = "🚚 *GI ISSUED BY WAREHOUSE* 🚚\n";
+                $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+                $msgHeader .= "🔖 *ID GIF* : $id\n";
+                $msgHeader .= "👤 *Issued By*: $serverName\n";
+                $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n";
+                $msgHeader .= $itemsText;
 
-                if($reqPhone) sendWA($reqPhone, $msgHeader . "\n👉 Barang fisik sudah disiapkan/dikeluarkan. Silakan ambil barang dan lakukan konfirmasi penerimaan (Receive) di sistem.");
+                if($reqPhone) sendWA($reqPhone, $msgHeader . "\n\n💡 *Action:* Barang fisik sudah disiapkan/dikeluarkan dari gudang. Silakan ambil barang dan lakukan Konfirmasi Penerimaan (Receive) di sistem.");
                 
-                $whPhones = array_unique(array_merge(getPhones($conn, 'Warehouse'), getPhones($conn, 'TeamLeader', 'Warehouse')));
-                foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Menunggu konfirmasi penerimaan (Receive) dari User.");
+                $whPhones = array_unique(array_merge((array)getPhones($conn, 'Warehouse'), (array)getPhones($conn, 'TeamLeader', 'Warehouse')));
+                foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Status:* Menunggu konfirmasi penerimaan dari User bersangkutan.");
                 
                 safeSendJson(['success'=>true, 'message'=>'Barang berhasil di-Issue. Menunggu konfirmasi penerimaan user.']);
             } catch (Exception $e) { $conn->rollback(); safeSendJson(['success'=>false, 'message'=>$e->getMessage()]); }
@@ -388,23 +472,53 @@ if($action == 'updateStatus') {
             $photoUrl = uploadGisPhoto($input['photoBase64'], "RECV_" . preg_replace('/[^a-zA-Z0-9]/', '', $id));
             if(!$photoUrl) safeSendJson(['success'=>false, 'message'=>'Gagal upload foto.']);
 
-            $sql = "UPDATE gis_requests SET status='Completed', received_by='$serverName', receive_time='$now', receive_photo='$photoUrl' WHERE req_id='$id'";
+            $sql = "UPDATE gis_requests SET status='Pending No GI (ERP)', received_by='$serverName', receive_time='$now', receive_photo='$photoUrl' WHERE req_id='$id'";
             if($conn->query($sql)) {
                 
                 $itemsText = buildItemListText($conn, $items);
-                $msgHeader = "🏁 *GI COMPLETED (RECEIVED)*\nNO GIF: $id\nReceived by: $serverName\n\n$itemsText";
+                $msgHeader = "🏁 *GI RECEIVED BY USER* 🏁\n";
+                $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+                $msgHeader .= "🔖 *ID GIF* : $id\n";
+                $msgHeader .= "👤 *Diterima By*: $serverName\n";
+                $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n";
+                $msgHeader .= $itemsText;
 
-                if($reqPhone) sendWA($reqPhone, $msgHeader . "\n👉 Proses pengeluaran barang selesai. Terima kasih.");
+                if($reqPhone) sendWA($reqPhone, $msgHeader . "\n\n💡 *Status:* Barang telah Anda konfirmasi. Saat ini menunggu pihak Warehouse menginput Nomor GI ERP.");
 
-                $whPhones = array_unique(array_merge(getPhones($conn, 'Warehouse'), getPhones($conn, 'TeamLeader', 'Warehouse')));
-                foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n👉 User telah menerima barang fisik dengan baik.");
+                $whPhones = array_unique(array_merge((array)getPhones($conn, 'Warehouse'), (array)getPhones($conn, 'TeamLeader', 'Warehouse')));
+                foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Action:* User telah menerima fisik barang. *SILAKAN INPUT NOMOR GI ERP* di sistem GIS untuk menyelesaikan (Complete) transaksi ini.");
 
-                safeSendJson(['success'=>true, 'message'=>'Barang berhasil diterima. Proses selesai.']);
+                safeSendJson(['success'=>true, 'message'=>'Barang berhasil diterima. Menunggu input Nomor GI ERP dari Gudang.']);
             } else {
                 safeSendJson(['success'=>false, 'message'=>$conn->error]);
             }
         } else {
             safeSendJson(['success'=>false, 'message'=>'Unauthorized to receive.']);
+        }
+    }
+    elseif($act == 'complete_erp') {
+        $isWarehouseAdmin = in_array($serverRole, ['Administrator', 'Warehouse']) || ($serverRole === 'TeamLeader' && strtolower($serverDept) === 'warehouse');
+        if($req['status'] == 'Pending No GI (ERP)' && $isWarehouseAdmin) {
+            $erpNo = $conn->real_escape_string($input['erp_gi_no'] ?? '');
+            if(empty($erpNo)) safeSendJson(['success'=>false, 'message'=>'Nomor GI ERP tidak boleh kosong.']);
+
+            $sql = "UPDATE gis_requests SET status='Completed', erp_gi_no='$erpNo' WHERE req_id='$id'";
+            if($conn->query($sql)) {
+                $msgHeader = "🎉 *GI COMPLETED (FULL)* 🎉\n";
+                $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+                $msgHeader .= "🔖 *ID GIF* : $id\n";
+                $msgHeader .= "🧾 *No ERP* : $erpNo\n";
+                $msgHeader .= "👤 *Admin WH* : $serverName\n";
+                $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+
+                if($reqPhone) sendWA($reqPhone, $msgHeader . "\n\n💡 *Info:* Proses pengeluaran barang dan pendataan di sistem ERP telah selesai sepenuhnya. Terima kasih.");
+                
+                safeSendJson(['success'=>true, 'message'=>'Nomor GI ERP berhasil disimpan. Status transaksi selesai.']);
+            } else {
+                safeSendJson(['success'=>false, 'message'=>$conn->error]);
+            }
+        } else {
+            safeSendJson(['success'=>false, 'message'=>'Akses ditolak atau status tidak valid.']);
         }
     }
     elseif($act == 'reject') {
@@ -416,11 +530,17 @@ if($action == 'updateStatus') {
         $conn->query($sql);
         
         $itemsText = buildItemListText($conn, $items);
-        $msgHeader = "❌ *GI REJECTED*\nNO GIF: $id\nRejected by: $serverName\nAlasan: $reason\n\n$itemsText";
+        $msgHeader = "❌ *GI REJECTED* ❌\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n";
+        $msgHeader .= "🔖 *ID GIF* : $id\n";
+        $msgHeader .= "👤 *Ditolak By*: $serverName\n";
+        $msgHeader .= "💬 *Alasan* : $reason\n";
+        $msgHeader .= "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n";
+        $msgHeader .= $itemsText;
 
-        if($reqPhone) sendWA($reqPhone, $msgHeader . "\n👉 Permintaan Anda ditolak.");
-        $whPhones = array_unique(array_merge(getPhones($conn, 'Warehouse'), getPhones($conn, 'TeamLeader', 'Warehouse')));
-        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n👉 Permintaan GI ini telah ditolak di sistem.");
+        if($reqPhone) sendWA($reqPhone, $msgHeader . "\n\n💡 *Info:* Mohon maaf, permintaan Good Issue Anda telah ditolak.");
+        $whPhones = array_unique(array_merge((array)getPhones($conn, 'Warehouse'), (array)getPhones($conn, 'TeamLeader', 'Warehouse')));
+        foreach($whPhones as $ph) sendWA($ph, $msgHeader . "\n\n💡 *Info:* Permintaan GI ini telah ditolak dan tidak akan diproses lebih lanjut.");
 
         safeSendJson(['success'=>true, 'message'=>'Request rejected.']);
     }
